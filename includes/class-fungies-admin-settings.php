@@ -213,18 +213,30 @@ class Fungies_Admin_Settings {
 			wp_send_json_error( __( 'Permission denied.', 'fungies-wp' ) );
 		}
 
+		$is_sandbox = self::is_sandbox();
+		$pub_key    = self::get_active_public_key();
+		$sec_key    = self::get_active_secret_key();
+		$env        = $is_sandbox ? 'staging' : 'production';
+		$host       = $is_sandbox ? 'api.stage.fungies.net' : 'api.fungies.io';
+
+		if ( empty( $pub_key ) ) {
+			wp_send_json_error(
+				sprintf( 'No %s public key saved. Enter your key and click Save Changes first.', $env )
+			);
+		}
+
 		$client   = new Fungies_API_Client();
 		$response = $client->get( '/offers/list' );
 
 		if ( is_wp_error( $response ) ) {
-			wp_send_json_error( $response->get_error_message() );
+			$key_preview = substr( $pub_key, 0, 8 ) . '...';
+			wp_send_json_error(
+				sprintf( '%s [%s → %s, key: %s]', $response->get_error_message(), $env, $host, $key_preview )
+			);
 		}
 
-		$is_sandbox = self::is_sandbox();
-		$env        = $is_sandbox ? 'staging' : 'production';
-
 		wp_send_json_success(
-			sprintf( __( 'Connected to %s API!', 'fungies-wp' ), $env )
+			sprintf( __( 'Connected to %s API! (%s)', 'fungies-wp' ), $env, $host )
 		);
 	}
 
