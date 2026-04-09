@@ -30,6 +30,7 @@ class Fungies_Loader {
 		require_once $dir . 'class-fungies-order-metabox.php';
 		require_once $dir . 'class-fungies-product-metabox.php';
 		require_once $dir . 'class-fungies-dashboard-widget.php';
+		require_once $dir . 'class-fungies-currency.php';
 	}
 
 	private function init_hooks() {
@@ -41,6 +42,7 @@ class Fungies_Loader {
 		Fungies_Order_Metabox::init();
 		Fungies_Product_Metabox::init();
 		Fungies_Dashboard_Widget::init();
+		Fungies_Currency::init();
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'register_gateway' ) );
 		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_payment' ) );

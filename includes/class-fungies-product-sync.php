@@ -212,20 +212,30 @@ class Fungies_Product_Sync {
 		$offer_id = $offer['id'] ?? '';
 		$price    = $offer['price'] ?? 0;
 		$original = $offer['originalPrice'] ?? ( $offer['original_price'] ?? $price );
-		$currency = $offer['currency'] ?? 'USD';
+		$currency = strtoupper( $offer['currency'] ?? 'USD' );
 
-		$price_dollars    = $price / 100;
-		$original_dollars = $original / 100;
+		$price_amount    = $price / 100;
+		$original_amount = $original / 100;
 
 		update_post_meta( $product_id, '_fungies_offer_id', $offer_id );
-		update_post_meta( $product_id, '_regular_price', $original_dollars );
-		update_post_meta( $product_id, '_price', $price_dollars );
+		update_post_meta( $product_id, '_regular_price', $original_amount );
+		update_post_meta( $product_id, '_price', $price_amount );
 
 		if ( $original > $price && $price > 0 ) {
-			update_post_meta( $product_id, '_sale_price', $price_dollars );
+			update_post_meta( $product_id, '_sale_price', $price_amount );
+		} else {
+			delete_post_meta( $product_id, '_sale_price' );
 		}
 
 		update_post_meta( $product_id, '_fungies_currency', $currency );
+
+		$wc_currency = get_woocommerce_currency();
+		if ( $currency !== $wc_currency ) {
+			self::log( sprintf(
+				'Offer %s is in %s (store currency: %s) — price displayed with original currency.',
+				substr( $offer_id, 0, 8 ), $currency, $wc_currency
+			) );
+		}
 	}
 
 	private static function find_wc_product_by_offer_id( $offer_id ) {
