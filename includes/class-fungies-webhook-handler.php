@@ -54,7 +54,7 @@ class Fungies_Webhook_Handler {
 	}
 
 	private static function verify_signature( $body, $signature ) {
-		$secret = Fungies_Admin_Settings::get_option( 'webhook_secret' );
+		$secret = Fungies_Admin_Settings::get_active_webhook_secret();
 
 		if ( empty( $secret ) ) {
 			self::log( 'No webhook secret configured — skipping verification.', 'warning' );

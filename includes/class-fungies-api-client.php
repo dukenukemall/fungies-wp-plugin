@@ -8,10 +8,9 @@ class Fungies_API_Client {
 	private $secret_key;
 
 	public function __construct() {
-		$sandbox = Fungies_Admin_Settings::get_option( 'sandbox_mode', 'no' ) === 'yes';
-		$this->base_url   = $sandbox ? FUNGIES_API_STAGING_URL : FUNGIES_API_BASE_URL;
-		$this->public_key = Fungies_Admin_Settings::get_option( 'public_key' );
-		$this->secret_key = Fungies_Admin_Settings::get_option( 'secret_key' );
+		$this->base_url   = Fungies_Admin_Settings::is_sandbox() ? FUNGIES_API_STAGING_URL : FUNGIES_API_BASE_URL;
+		$this->public_key = Fungies_Admin_Settings::get_active_public_key();
+		$this->secret_key = Fungies_Admin_Settings::get_active_secret_key();
 	}
 
 	private function headers() {
