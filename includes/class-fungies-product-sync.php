@@ -27,14 +27,17 @@ class Fungies_Product_Sync {
 	public static function sync() {
 		$client = new Fungies_API_Client();
 
-		$offers_response = $client->get_offers();
+		$offers_response = $client->get_offers( array( 'product.types' => 'OneTimePayment' ) );
 		if ( is_wp_error( $offers_response ) ) {
 			self::log( 'Offers fetch failed: ' . $offers_response->get_error_message(), 'error' );
 			return $offers_response;
 		}
 
 		$offers_list = self::extract_list( $offers_response, 'offers' );
-		self::log( 'Fetched ' . count( $offers_list ) . ' offers.' );
+		self::log( 'Fetched ' . count( $offers_list ) . ' offers from API.' );
+
+		$offers_list = self::filter_one_time_payment( $offers_list );
+		self::log( count( $offers_list ) . ' OneTimePayment offers after filter.' );
 
 		$products_response = $client->get_products();
 		$products_list     = array();
@@ -75,7 +78,7 @@ class Fungies_Product_Sync {
 		update_option( 'fungies_product_count', $synced );
 
 		$summary = sprintf(
-			__( 'Synced %d offers (%d created, %d updated).', 'fungies-wp' ),
+			__( 'Synced %d OneTimePayment offers (%d created, %d updated).', 'fungies-wp' ),
 			$synced, $created, $updated
 		);
 
@@ -87,6 +90,18 @@ class Fungies_Product_Sync {
 			'updated' => $updated,
 			'message' => $summary,
 		);
+	}
+
+	private static function filter_one_time_payment( $offers ) {
+		return array_filter( $offers, function ( $offer ) {
+			$types = $offer['product']['types'] ?? ( $offer['productTypes'] ?? array() );
+			if ( ! empty( $types ) && is_array( $types ) ) {
+				return in_array( 'OneTimePayment', $types, true );
+			}
+			$recurring = $offer['recurringIntervalCount'] ?? null;
+			$trial     = $offer['trialInterval'] ?? null;
+			return empty( $recurring ) && empty( $trial );
+		} );
 	}
 
 	private static function extract_list( $response, $key ) {

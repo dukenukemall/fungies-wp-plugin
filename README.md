@@ -235,7 +235,8 @@ Navigate to **WooCommerce → Settings → Fungies**:
   │   ├── class-fungies-api-client.php   Fungies REST API wrapper
   │   ├── class-fungies-admin-settings.php  WC Settings tab
   │   ├── class-fungies-product-sync.php    Product sync engine
-  │   ├── class-fungies-payment-gateway.php WC Payment Gateway
+  │   ├── class-fungies-payment-gateway.php WC Payment Gateway (classic)
+  │   ├── class-fungies-blocks-payment.php  WC Block Checkout integration
   │   ├── class-fungies-checkout.php        Frontend SDK integration
   │   ├── class-fungies-webhook-handler.php Webhook endpoint + verification
   │   ├── class-fungies-order-sync.php      Event → WC Order routing
@@ -244,8 +245,11 @@ Navigate to **WooCommerce → Settings → Fungies**:
   │   └── class-fungies-dashboard-widget.php  WP Dashboard widget
   │
   ├── assets/
+  │   ├── img/
+  │   │   └── fungies-icon.png           Gateway icon
   │   ├── js/
   │   │   ├── fungies-admin.js           Admin AJAX handlers
+  │   │   ├── fungies-blocks-checkout.js Block checkout registration
   │   │   └── fungies-checkout.js        Frontend checkout logic
   │   └── css/
   │       └── fungies-admin.css          Admin styles
@@ -256,7 +260,24 @@ Navigate to **WooCommerce → Settings → Fungies**:
 
 ---
 
-## Product Sync Mapping
+## Product Sync
+
+### Supported Offer Types
+
+Currently, only **OneTimePayment** offers are synced from Fungies to WooCommerce. Subscription, VirtualCurrency, and other product types are skipped during sync.
+
+| Fungies Product Type | Synced? |
+|---|---|
+| **OneTimePayment** | Yes |
+| Subscription | Not yet |
+| DigitalDownload | Not yet |
+| Game | Not yet |
+| GiftCard | Not yet |
+| Softwarekey | Not yet |
+| VirtualCurrency | Not yet |
+| Virtualitem | Not yet |
+
+### Field Mapping
 
 ```
   ┌──────────────────────┐          ┌──────────────────────┐
