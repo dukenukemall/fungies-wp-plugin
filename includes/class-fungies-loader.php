@@ -45,26 +45,10 @@ class Fungies_Loader {
 		Fungies_Currency::init();
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'register_gateway' ) );
-		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_payment' ) );
 	}
 
 	public function register_gateway( $gateways ) {
 		$gateways[] = 'Fungies_Payment_Gateway';
 		return $gateways;
-	}
-
-	public function register_blocks_payment() {
-		if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
-			return;
-		}
-
-		require_once FUNGIES_WP_PLUGIN_DIR . 'includes/class-fungies-blocks-payment.php';
-
-		add_action(
-			'woocommerce_blocks_payment_method_type_registration',
-			function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
-				$registry->register( new Fungies_Blocks_Payment() );
-			}
-		);
 	}
 }

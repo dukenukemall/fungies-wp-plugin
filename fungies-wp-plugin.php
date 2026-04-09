@@ -3,7 +3,7 @@
  * Plugin Name: Fungies for WooCommerce
  * Plugin URI: https://github.com/dukenukemall/fungies-wp-plugin
  * Description: Connect your WooCommerce store to Fungies.io — sync products, use Fungies checkout, and keep orders in sync.
- * Version: 1.6.0
+ * Version: 1.6.1
  * Author: Fungies
  * Author URI: https://fungies.io
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'FUNGIES_WP_VERSION', '1.6.0' );
+define( 'FUNGIES_WP_VERSION', '1.6.1' );
 define( 'FUNGIES_WP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_FILE', __FILE__ );
@@ -27,6 +27,23 @@ define( 'FUNGIES_API_BASE_URL', 'https://api.fungies.io/v0' );
 define( 'FUNGIES_API_STAGING_URL', 'https://api.stage.fungies.net/v0' );
 
 require_once FUNGIES_WP_PLUGIN_DIR . 'includes/class-fungies-loader.php';
+
+add_action( 'woocommerce_blocks_loaded', 'fungies_register_block_payment_method' );
+
+function fungies_register_block_payment_method() {
+	if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+		return;
+	}
+
+	require_once FUNGIES_WP_PLUGIN_DIR . 'includes/class-fungies-blocks-payment.php';
+
+	add_action(
+		'woocommerce_blocks_payment_method_type_registration',
+		function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
+			$registry->register( new Fungies_Blocks_Payment() );
+		}
+	);
+}
 
 add_action( 'before_woocommerce_init', function () {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
