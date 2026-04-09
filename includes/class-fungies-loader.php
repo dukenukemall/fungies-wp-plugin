@@ -30,7 +30,6 @@ class Fungies_Loader {
 		require_once $dir . 'class-fungies-order-metabox.php';
 		require_once $dir . 'class-fungies-product-metabox.php';
 		require_once $dir . 'class-fungies-dashboard-widget.php';
-		require_once $dir . 'class-fungies-blocks-payment.php';
 	}
 
 	private function init_hooks() {
@@ -57,9 +56,11 @@ class Fungies_Loader {
 			return;
 		}
 
+		require_once FUNGIES_WP_PLUGIN_DIR . 'includes/class-fungies-blocks-payment.php';
+
 		add_action(
 			'woocommerce_blocks_payment_method_type_registration',
-			function ( $registry ) {
+			function ( Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
 				$registry->register( new Fungies_Blocks_Payment() );
 			}
 		);

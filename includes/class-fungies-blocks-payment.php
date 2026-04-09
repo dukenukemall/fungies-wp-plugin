@@ -24,6 +24,7 @@ class Fungies_Blocks_Payment extends AbstractPaymentMethodType {
 				'wc-settings',
 				'wp-element',
 				'wp-html-entities',
+				'wp-i18n',
 			),
 			FUNGIES_WP_VERSION,
 			true
