@@ -12,6 +12,13 @@ class Fungies_Blocks_Payment extends AbstractPaymentMethodType {
 	}
 
 	public function is_active() {
+		if ( function_exists( 'WC' ) && WC()->payment_gateways ) {
+			$gateways = WC()->payment_gateways->payment_gateways();
+			if ( isset( $gateways['fungies'] ) ) {
+				return $gateways['fungies']->is_available();
+			}
+		}
+
 		return filter_var( $this->get_setting( 'enabled', false ), FILTER_VALIDATE_BOOLEAN );
 	}
 
@@ -20,6 +27,7 @@ class Fungies_Blocks_Payment extends AbstractPaymentMethodType {
 			'fungies-blocks-checkout',
 			FUNGIES_WP_PLUGIN_URL . 'assets/js/fungies-blocks-checkout.js',
 			array(
+				'wc-blocks-checkout',
 				'wc-blocks-registry',
 				'wc-settings',
 				'wp-element',
@@ -38,10 +46,15 @@ class Fungies_Blocks_Payment extends AbstractPaymentMethodType {
 	}
 
 	public function get_payment_method_data() {
+		$features = $this->get_supported_features();
+		if ( empty( $features ) ) {
+			$features = array( 'products' );
+		}
+
 		return array(
-			'title'       => $this->get_setting( 'title' ),
-			'description' => $this->get_setting( 'description' ),
-			'supports'    => $this->get_supported_features(),
+			'title'       => $this->get_setting( 'title' ) ?: 'Fungies Checkout',
+			'description' => $this->get_setting( 'description' ) ?: 'Pay securely via Fungies.',
+			'supports'    => array_values( $features ),
 			'icon'        => FUNGIES_WP_PLUGIN_URL . 'assets/img/fungies-icon.png',
 		);
 	}

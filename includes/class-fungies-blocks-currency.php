@@ -22,6 +22,17 @@ class Fungies_Blocks_Currency {
 			return $response;
 		}
 
+		try {
+			return self::apply_currency_overrides( $response );
+		} catch ( \Exception $e ) {
+			if ( function_exists( 'wc_get_logger' ) ) {
+				wc_get_logger()->error( 'Fungies currency filter error: ' . $e->getMessage(), array( 'source' => 'fungies' ) );
+			}
+			return $response;
+		}
+	}
+
+	private static function apply_currency_overrides( $response ) {
 		$data = $response->get_data();
 
 		if ( ! isset( $data['items'] ) || ! is_array( $data['items'] ) ) {

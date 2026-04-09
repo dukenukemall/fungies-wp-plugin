@@ -54,17 +54,13 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 
 		if ( 'hosted' === $checkout_mode ) {
 			$redirect_url = self::build_hosted_checkout_url( $order );
-			return array(
-				'result'   => 'success',
-				'redirect' => $redirect_url,
-			);
+		} else {
+			$redirect_url = $this->get_return_url( $order );
 		}
 
 		return array(
-			'result'       => 'success',
-			'redirect'     => '',
-			'fungies_mode' => $checkout_mode,
-			'order_id'     => $order_id,
+			'result'   => 'success',
+			'redirect' => $redirect_url,
 		);
 	}
 
