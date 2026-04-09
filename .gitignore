@@ -24,3 +24,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Local Knowledge Base (Obsidian wiki)
+.kb/
