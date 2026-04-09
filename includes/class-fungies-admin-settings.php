@@ -231,7 +231,10 @@ class Fungies_Admin_Settings {
 		if ( is_wp_error( $response ) ) {
 			$key_preview = substr( $pub_key, 0, 8 ) . '...';
 			wp_send_json_error(
-				sprintf( '%s [%s → %s, key: %s]', $response->get_error_message(), $env, $host, $key_preview )
+				sprintf(
+					'%s — Make sure you hit Save Changes before testing the connection. [%s → %s, key: %s]',
+					$response->get_error_message(), $env, $host, $key_preview
+				)
 			);
 		}
 
