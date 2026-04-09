@@ -122,7 +122,7 @@ class Fungies_Admin_Settings {
 		if ( 'woocommerce_page_wc-settings' !== $hook ) {
 			return;
 		}
-		if ( ! isset( $_GET['tab'] ) || 'fungies' !== $_GET['tab'] ) {
+		if ( ! isset( $_GET['tab'] ) || 'fungies' !== sanitize_text_field( wp_unslash( $_GET['tab'] ) ) ) {
 			return;
 		}
 

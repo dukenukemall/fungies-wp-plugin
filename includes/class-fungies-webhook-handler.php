@@ -29,10 +29,14 @@ class Fungies_Webhook_Handler {
 
 		$payload = json_decode( $body, true );
 
-		if ( ! $payload || empty( $payload['event'] ) ) {
-			self::log( 'Webhook payload invalid or missing event.', 'error' );
+		$event_type = $payload['type'] ?? ( $payload['event'] ?? '' );
+
+		if ( ! $payload || empty( $event_type ) ) {
+			self::log( 'Webhook payload invalid or missing event type.', 'error' );
 			return new WP_REST_Response( array( 'error' => 'Invalid payload' ), 400 );
 		}
+
+		$payload['_event_type'] = $event_type;
 
 		$idempotency = $payload['idempotencyKey'] ?? ( $payload['idempotency_key'] ?? '' );
 		if ( $idempotency && self::is_duplicate( $idempotency ) ) {
@@ -61,9 +65,9 @@ class Fungies_Webhook_Handler {
 			return false;
 		}
 
-		$expected = hash_hmac( 'sha256', $body, $secret );
+		$computed = 'sha256_' . hash_hmac( 'sha256', $body, $secret );
 
-		return hash_equals( $expected, $signature );
+		return hash_equals( $computed, $signature );
 	}
 
 	private static function is_duplicate( $key ) {
@@ -75,7 +79,7 @@ class Fungies_Webhook_Handler {
 	}
 
 	public static function process_event( $payload ) {
-		$event = $payload['event'] ?? '';
+		$event = $payload['_event_type'] ?? ( $payload['type'] ?? ( $payload['event'] ?? '' ) );
 		self::log( 'Processing webhook event: ' . $event );
 
 		Fungies_Order_Sync::handle_event( $event, $payload );

@@ -15,7 +15,7 @@
       country: $("#billing_country").val() || "",
       state: $("#billing_state").val() || "",
       city: $("#billing_city").val() || "",
-      zip: $("#billing_postcode").val() || "",
+      zipCode: $("#billing_postcode").val() || "",
     };
   }
 
@@ -65,7 +65,7 @@
     if (typeof Fungies !== "undefined" && Fungies.Checkout) {
       Fungies.Checkout.open({
         checkoutUrl: checkoutUrl,
-        settings: { mode: "embedded", containerId: "fungies-checkout-embed" },
+        settings: { mode: "embed", frameTarget: "fungies-checkout-embed" },
         items: getItems(),
         billingData: getBillingData(),
       });

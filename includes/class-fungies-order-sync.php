@@ -14,6 +14,7 @@ class Fungies_Order_Sync {
 				self::handle_payment_failed( $payload );
 				break;
 			case 'payment_refunded':
+			case 'payment_refund':
 				self::handle_payment_refunded( $payload );
 				break;
 			case 'subscription_created':
@@ -30,35 +31,54 @@ class Fungies_Order_Sync {
 		}
 	}
 
+	private static function extract_event_data( $payload ) {
+		$data     = $payload['data'] ?? $payload;
+		$order    = $data['order'] ?? $data;
+		$payment  = $data['payment'] ?? array();
+		$customer = $data['customer'] ?? ( $data['user'] ?? array() );
+		$items    = $data['items'] ?? array();
+
+		return compact( 'data', 'order', 'payment', 'customer', 'items' );
+	}
+
+	private static function cents_to_dollars( $cents ) {
+		if ( ! is_numeric( $cents ) ) return 0;
+		return round( (float) $cents / 100, 2 );
+	}
+
 	private static function handle_payment_success( $payload ) {
-		$data = $payload['data'] ?? $payload;
+		$ev = self::extract_event_data( $payload );
 
-		$fungies_order_id = $data['orderId'] ?? ( $data['order_id'] ?? '' );
-		$wc_order_id      = self::extract_wc_order_id( $data );
-		$order             = $wc_order_id ? wc_get_order( $wc_order_id ) : null;
+		$fungies_order_id = $ev['order']['id'] ?? '';
+		$wc_order_id      = self::extract_wc_order_id( $ev );
+		$wc_order         = $wc_order_id ? wc_get_order( $wc_order_id ) : null;
 
-		if ( ! $order ) {
-			$order = self::create_order_from_webhook( $data );
+		if ( ! $wc_order ) {
+			$wc_order = self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
 		}
 
-		if ( ! $order ) {
+		if ( ! $wc_order ) {
+			$wc_order = self::create_order_from_webhook( $ev );
+		}
+
+		if ( ! $wc_order ) {
 			self::log( 'Could not create or find WC order for payment_success.', 'error' );
 			return;
 		}
 
-		$order->payment_complete( $fungies_order_id );
-		$order->add_order_note(
+		$wc_order->payment_complete( $fungies_order_id );
+		$wc_order->add_order_note(
 			sprintf( __( 'Fungies payment completed. Order ID: %s', 'fungies-wp' ), $fungies_order_id )
 		);
 
-		self::store_order_meta( $order, $data );
+		self::store_order_meta( $wc_order, $ev );
 
-		self::log( "Order #{$order->get_id()} marked completed via payment_success." );
+		self::log( "Order #{$wc_order->get_id()} marked completed via payment_success." );
 	}
 
 	private static function handle_payment_failed( $payload ) {
-		$data    = $payload['data'] ?? $payload;
-		$order   = self::find_order( $data );
+		$ev    = self::extract_event_data( $payload );
+		$order = self::find_order( $ev );
 
 		if ( ! $order ) {
 			self::log( 'No WC order found for payment_failed.', 'warning' );
@@ -70,15 +90,17 @@ class Fungies_Order_Sync {
 	}
 
 	private static function handle_payment_refunded( $payload ) {
-		$data  = $payload['data'] ?? $payload;
-		$order = self::find_order( $data );
+		$ev    = self::extract_event_data( $payload );
+		$order = self::find_order( $ev );
 
 		if ( ! $order ) {
 			self::log( 'No WC order found for payment_refunded.', 'warning' );
 			return;
 		}
 
-		$refund_amount = $data['refundAmount'] ?? ( $data['refund_amount'] ?? $order->get_total() );
+		$refund_cents = $ev['payment']['refundAmount']
+			?? ( $ev['order']['value'] ?? 0 );
+		$refund_amount = self::cents_to_dollars( $refund_cents );
 
 		wc_create_refund( array(
 			'amount'   => $refund_amount,
@@ -87,18 +109,18 @@ class Fungies_Order_Sync {
 		) );
 
 		$order->update_status( 'refunded', __( 'Fungies payment refunded.', 'fungies-wp' ) );
-		self::log( "Order #{$order->get_id()} refunded." );
+		self::log( "Order #{$order->get_id()} refunded ({$refund_amount})." );
 	}
 
 	private static function handle_subscription_created( $payload ) {
-		$data  = $payload['data'] ?? $payload;
-		$order = self::find_order( $data );
+		$ev    = self::extract_event_data( $payload );
+		$order = self::find_order( $ev );
 
-		if ( ! $order ) {
-			return;
-		}
+		if ( ! $order ) return;
 
-		$sub_id = $data['subscriptionId'] ?? ( $data['subscription_id'] ?? '' );
+		$sub = $ev['data']['subscription'] ?? array();
+		$sub_id = $sub['id'] ?? ( $ev['order']['subscriptionId'] ?? '' );
+
 		$order->update_meta_data( '_fungies_subscription_id', $sub_id );
 		$order->save();
 
@@ -109,9 +131,9 @@ class Fungies_Order_Sync {
 	}
 
 	private static function handle_subscription_interval( $payload ) {
-		$data          = $payload['data'] ?? $payload;
-		$parent_order  = self::find_order( $data );
-		$parent_id     = $parent_order ? $parent_order->get_id() : 0;
+		$ev           = self::extract_event_data( $payload );
+		$parent_order = self::find_order( $ev );
+		$parent_id    = $parent_order ? $parent_order->get_id() : 0;
 
 		$renewal = wc_create_order( array( 'parent' => $parent_id ) );
 
@@ -126,24 +148,29 @@ class Fungies_Order_Sync {
 			}
 		}
 
+		$total = self::cents_to_dollars( $ev['order']['value'] ?? 0 );
+		if ( ! $total && $parent_order ) {
+			$total = $parent_order->get_total();
+		}
+
 		$renewal->set_payment_method( 'fungies' );
-		$renewal->set_total( $data['amount'] ?? ( $parent_order ? $parent_order->get_total() : 0 ) );
+		$renewal->set_total( $total );
 		$renewal->payment_complete();
-		self::store_order_meta( $renewal, $data );
+		self::store_order_meta( $renewal, $ev );
 		$renewal->save();
 
 		self::log( "Renewal order #{$renewal->get_id()} created for subscription interval." );
 	}
 
 	private static function handle_subscription_cancelled( $payload ) {
-		$data  = $payload['data'] ?? $payload;
-		$order = self::find_order( $data );
+		$ev    = self::extract_event_data( $payload );
+		$order = self::find_order( $ev );
 
-		if ( ! $order ) {
-			return;
-		}
+		if ( ! $order ) return;
 
-		$sub_id = $data['subscriptionId'] ?? ( $data['subscription_id'] ?? '' );
+		$sub = $ev['data']['subscription'] ?? array();
+		$sub_id = $sub['id'] ?? ( $ev['order']['subscriptionId'] ?? '' );
+
 		$order->update_meta_data( '_fungies_subscription_status', 'cancelled' );
 		$order->save();
 
@@ -153,14 +180,20 @@ class Fungies_Order_Sync {
 		self::log( "Subscription {$sub_id} cancelled on order #{$order->get_id()}." );
 	}
 
-	private static function extract_wc_order_id( $data ) {
-		$custom = $data['customFields'] ?? ( $data['custom_fields'] ?? array() );
+	private static function extract_wc_order_id( $ev ) {
+		foreach ( $ev['items'] as $item ) {
+			$cf = $item['customFields'] ?? ( $item['custom_fields'] ?? array() );
+			if ( isset( $cf['wc_order_id'] ) ) {
+				return (int) $cf['wc_order_id'];
+			}
+		}
 
+		$custom = $ev['data']['customFields'] ?? ( $ev['data']['custom_fields'] ?? array() );
 		if ( isset( $custom['wc_order_id'] ) ) {
 			return (int) $custom['wc_order_id'];
 		}
 
-		$metadata = $data['metadata'] ?? array();
+		$metadata = $ev['data']['metadata'] ?? array();
 		if ( isset( $metadata['wc_order_id'] ) ) {
 			return (int) $metadata['wc_order_id'];
 		}
@@ -168,15 +201,15 @@ class Fungies_Order_Sync {
 		return null;
 	}
 
-	private static function find_order( $data ) {
-		$wc_order_id = self::extract_wc_order_id( $data );
+	private static function find_order( $ev ) {
+		$wc_order_id = self::extract_wc_order_id( $ev );
 
 		if ( $wc_order_id ) {
 			$order = wc_get_order( $wc_order_id );
 			if ( $order ) return $order;
 		}
 
-		$fungies_order_id = $data['orderId'] ?? ( $data['order_id'] ?? '' );
+		$fungies_order_id = $ev['order']['id'] ?? '';
 		if ( $fungies_order_id ) {
 			return self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
 		}
@@ -185,6 +218,8 @@ class Fungies_Order_Sync {
 	}
 
 	private static function find_order_by_meta( $key, $value ) {
+		if ( empty( $value ) ) return null;
+
 		$orders = wc_get_orders( array(
 			'meta_key'   => $key,
 			'meta_value' => $value,
@@ -194,25 +229,27 @@ class Fungies_Order_Sync {
 		return ! empty( $orders ) ? $orders[0] : null;
 	}
 
-	private static function create_order_from_webhook( $data ) {
+	private static function create_order_from_webhook( $ev ) {
 		$order = wc_create_order();
 
 		if ( is_wp_error( $order ) ) {
-			self::log( 'Failed to create order from webhook: ' . $order->get_error_message(), 'error' );
+			self::log( 'Failed to create order: ' . $order->get_error_message(), 'error' );
 			return null;
 		}
 
-		$customer = $data['customer'] ?? ( $data['billingData'] ?? array() );
+		$customer = $ev['customer'];
 
-		$order->set_billing_email( $customer['email'] ?? '' );
+		$order->set_billing_email( $customer['email'] ?? ( $customer['username'] ?? '' ) );
 		$order->set_billing_first_name( $customer['firstName'] ?? ( $customer['first_name'] ?? '' ) );
 		$order->set_billing_last_name( $customer['lastName'] ?? ( $customer['last_name'] ?? '' ) );
-		$order->set_billing_country( $customer['country'] ?? '' );
+		$order->set_billing_country( $ev['order']['country'] ?? '' );
 
-		self::attach_line_items( $order, $data );
+		self::attach_line_items( $order, $ev['items'] );
+
+		$total = self::cents_to_dollars( $ev['order']['value'] ?? 0 );
 
 		$order->set_payment_method( 'fungies' );
-		$order->set_total( $data['amount'] ?? ( $data['total'] ?? 0 ) );
+		$order->set_total( $total );
 		$order->save();
 
 		self::log( "Created WC order #{$order->get_id()} from webhook data." );
@@ -220,11 +257,10 @@ class Fungies_Order_Sync {
 		return $order;
 	}
 
-	private static function attach_line_items( $order, $data ) {
-		$items = $data['items'] ?? ( $data['lineItems'] ?? array() );
-
+	private static function attach_line_items( $order, $items ) {
 		foreach ( $items as $item ) {
-			$offer_id = $item['offerId'] ?? ( $item['offer_id'] ?? '' );
+			$offer    = $item['offer'] ?? array();
+			$offer_id = $offer['id'] ?? ( $item['offerId'] ?? '' );
 			if ( ! $offer_id ) continue;
 
 			$product_id = self::find_product_by_offer( $offer_id );
@@ -248,26 +284,29 @@ class Fungies_Order_Sync {
 		) );
 	}
 
-	private static function store_order_meta( $order, $data ) {
+	private static function store_order_meta( $wc_order, $ev ) {
+		$o = $ev['order'];
+		$p = $ev['payment'];
+
 		$map = array(
-			'_fungies_order_id'      => $data['orderId'] ?? ( $data['order_id'] ?? '' ),
-			'_fungies_order_number'  => $data['orderNumber'] ?? ( $data['order_number'] ?? '' ),
-			'_fungies_payment_id'    => $data['paymentId'] ?? ( $data['payment_id'] ?? '' ),
-			'_fungies_payment_type'  => $data['paymentType'] ?? ( $data['payment_type'] ?? '' ),
-			'_fungies_subscription_id' => $data['subscriptionId'] ?? ( $data['subscription_id'] ?? '' ),
-			'_fungies_event_id'      => $data['idempotencyKey'] ?? ( $data['event_id'] ?? '' ),
-			'_fungies_invoice_url'   => $data['invoiceUrl'] ?? ( $data['invoice_url'] ?? '' ),
-			'_fungies_fee'           => $data['fee'] ?? '',
-			'_fungies_tax'           => $data['tax'] ?? ( $data['taxAmount'] ?? '' ),
+			'_fungies_order_id'        => $o['id'] ?? '',
+			'_fungies_order_number'    => $o['number'] ?? '',
+			'_fungies_payment_id'      => $p['id'] ?? '',
+			'_fungies_payment_type'    => $p['type'] ?? '',
+			'_fungies_subscription_id' => $o['subscriptionId'] ?? '',
+			'_fungies_event_id'        => $ev['data']['idempotencyKey'] ?? '',
+			'_fungies_invoice_url'     => $p['invoiceUrl'] ?? ( $p['invoice_url'] ?? '' ),
+			'_fungies_fee'             => self::cents_to_dollars( $o['fee'] ?? 0 ),
+			'_fungies_tax'             => self::cents_to_dollars( $o['tax'] ?? 0 ),
 		);
 
 		foreach ( $map as $key => $value ) {
-			if ( '' !== $value ) {
-				$order->update_meta_data( $key, $value );
+			if ( '' !== $value && 0 !== $value ) {
+				$wc_order->update_meta_data( $key, $value );
 			}
 		}
 
-		$order->save();
+		$wc_order->save();
 	}
 
 	private static function log( $message, $level = 'info' ) {
