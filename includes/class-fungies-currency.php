@@ -91,7 +91,7 @@ class Fungies_Currency {
 		return self::format_price( $subtotal, $fg_currency );
 	}
 
-	private static function get_currency_symbols() {
+	public static function get_currency_symbols() {
 		return array(
 			'USD' => '$', 'EUR' => "\u{20AC}", 'GBP' => "\u{00A3}",
 			'PLN' => "z\u{0142}", 'JPY' => "\u{00A5}", 'CAD' => 'CA$',
