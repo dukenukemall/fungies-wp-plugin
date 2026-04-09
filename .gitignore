@@ -1,0 +1,26 @@
+# WordPress
+wp-config.php
+wp-content/uploads/
+wp-content/upgrade/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
