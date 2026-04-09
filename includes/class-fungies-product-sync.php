@@ -25,32 +25,43 @@ class Fungies_Product_Sync {
 	}
 
 	public static function sync() {
-		$client   = new Fungies_API_Client();
-		$products = $client->get_products();
+		$client = new Fungies_API_Client();
 
-		if ( is_wp_error( $products ) ) {
-			self::log( 'Product sync failed: ' . $products->get_error_message(), 'error' );
-			return $products;
+		$offers_response = $client->get_offers();
+		if ( is_wp_error( $offers_response ) ) {
+			self::log( 'Offers fetch failed: ' . $offers_response->get_error_message(), 'error' );
+			return $offers_response;
 		}
 
-		$offers = $client->get_offers();
-		if ( is_wp_error( $offers ) ) {
-			$offers = array();
+		$offers_list = self::extract_list( $offers_response, 'offers' );
+		self::log( 'Fetched ' . count( $offers_list ) . ' offers.' );
+
+		$products_response = $client->get_products();
+		$products_list     = array();
+		if ( ! is_wp_error( $products_response ) ) {
+			$products_list = self::extract_list( $products_response, 'products' );
+			self::log( 'Fetched ' . count( $products_list ) . ' products.' );
+		} else {
+			self::log( 'Products endpoint unavailable, syncing from offers only.', 'warning' );
 		}
 
-		$offers_by_product = self::group_offers_by_product( $offers );
+		$products_by_id = array();
+		foreach ( $products_list as $p ) {
+			if ( ! empty( $p['id'] ) ) {
+				$products_by_id[ $p['id'] ] = $p;
+			}
+		}
 
 		$synced  = 0;
 		$created = 0;
 		$updated = 0;
 
-		$product_list = self::extract_product_list( $products );
+		foreach ( $offers_list as $offer ) {
+			$offer_id   = $offer['id'] ?? '';
+			$product_id = $offer['productId'] ?? ( $offer['product_id'] ?? '' );
+			$fg_product = $product_id ? ( $products_by_id[ $product_id ] ?? null ) : null;
 
-		foreach ( $product_list as $fg_product ) {
-			$fg_id          = $fg_product['id'] ?? '';
-			$product_offers = $offers_by_product[ $fg_id ] ?? array();
-
-			$result = self::sync_single_product( $fg_product, $product_offers );
+			$result = self::sync_from_offer( $offer, $fg_product );
 
 			if ( 'created' === $result ) {
 				$created++;
@@ -64,10 +75,8 @@ class Fungies_Product_Sync {
 		update_option( 'fungies_product_count', $synced );
 
 		$summary = sprintf(
-			__( 'Synced %d products (%d created, %d updated).', 'fungies-wp' ),
-			$synced,
-			$created,
-			$updated
+			__( 'Synced %d offers (%d created, %d updated).', 'fungies-wp' ),
+			$synced, $created, $updated
 		);
 
 		self::log( $summary );
@@ -80,12 +89,12 @@ class Fungies_Product_Sync {
 		);
 	}
 
-	private static function extract_product_list( $response ) {
-		if ( isset( $response['data'] ) && is_array( $response['data'] ) ) {
-			return $response['data'];
+	private static function extract_list( $response, $key ) {
+		if ( isset( $response['data'][ $key ] ) && is_array( $response['data'][ $key ] ) ) {
+			return $response['data'][ $key ];
 		}
-		if ( isset( $response['products'] ) && is_array( $response['products'] ) ) {
-			return $response['products'];
+		if ( isset( $response[ $key ] ) && is_array( $response[ $key ] ) ) {
+			return $response[ $key ];
 		}
 		if ( is_array( $response ) && isset( $response[0]['id'] ) ) {
 			return $response;
@@ -93,38 +102,19 @@ class Fungies_Product_Sync {
 		return array();
 	}
 
-	private static function group_offers_by_product( $offers_response ) {
-		$grouped = array();
-		$list    = array();
-
-		if ( isset( $offers_response['data'] ) ) {
-			$list = $offers_response['data'];
-		} elseif ( isset( $offers_response['offers'] ) ) {
-			$list = $offers_response['offers'];
-		} elseif ( is_array( $offers_response ) && isset( $offers_response[0]['id'] ) ) {
-			$list = $offers_response;
-		}
-
-		foreach ( $list as $offer ) {
-			$pid = $offer['productId'] ?? ( $offer['product_id'] ?? '' );
-			if ( $pid ) {
-				$grouped[ $pid ][] = $offer;
-			}
-		}
-
-		return $grouped;
-	}
-
-	private static function sync_single_product( $fg_product, $offers ) {
-		$fg_id     = $fg_product['id'];
-		$existing  = self::find_wc_product_by_fungies_id( $fg_id );
+	private static function sync_from_offer( $offer, $fg_product ) {
+		$offer_id  = $offer['id'] ?? '';
+		$existing  = self::find_wc_product_by_offer_id( $offer_id );
 		$is_update = (bool) $existing;
 
-		$primary_offer = ! empty( $offers ) ? $offers[0] : null;
+		$name = $offer['name']
+			?? ( $fg_product['name'] ?? ( 'Fungies Offer ' . substr( $offer_id, 0, 8 ) ) );
+		$desc = $offer['description']
+			?? ( $fg_product['description'] ?? '' );
 
 		$product_data = array(
-			'post_title'   => $fg_product['name'] ?? '',
-			'post_content' => $fg_product['description'] ?? '',
+			'post_title'   => $name,
+			'post_content' => $desc,
 			'post_status'  => 'publish',
 			'post_type'    => 'product',
 		);
@@ -132,34 +122,37 @@ class Fungies_Product_Sync {
 		if ( $is_update ) {
 			$product_data['ID'] = $existing;
 			wp_update_post( $product_data );
-			$wc_product_id = $existing;
+			$wc_id = $existing;
 		} else {
-			$wc_product_id = wp_insert_post( $product_data );
+			$wc_id = wp_insert_post( $product_data );
 		}
 
-		if ( ! $wc_product_id || is_wp_error( $wc_product_id ) ) {
+		if ( ! $wc_id || is_wp_error( $wc_id ) ) {
 			return false;
 		}
 
-		wp_set_object_terms( $wc_product_id, 'simple', 'product_type' );
+		wp_set_object_terms( $wc_id, 'simple', 'product_type' );
+		update_post_meta( $wc_id, '_virtual', 'yes' );
+		update_post_meta( $wc_id, '_sold_individually', 'no' );
+		update_post_meta( $wc_id, '_manage_stock', 'no' );
 
-		update_post_meta( $wc_product_id, '_fungies_product_id', $fg_id );
-		update_post_meta( $wc_product_id, '_virtual', 'yes' );
-		update_post_meta( $wc_product_id, '_sold_individually', 'no' );
-		update_post_meta( $wc_product_id, '_manage_stock', 'no' );
+		self::apply_offer_meta( $wc_id, $offer );
 
-		if ( $primary_offer ) {
-			self::apply_offer_meta( $wc_product_id, $primary_offer );
-		}
+		if ( $fg_product ) {
+			$fg_pid = $fg_product['id'] ?? '';
+			if ( $fg_pid ) {
+				update_post_meta( $wc_id, '_fungies_product_id', $fg_pid );
+			}
 
-		$checkout_url = $fg_product['checkoutUrl'] ?? ( $fg_product['checkout_url'] ?? '' );
-		if ( $checkout_url ) {
-			update_post_meta( $wc_product_id, '_fungies_checkout_url', $checkout_url );
-		}
+			$checkout_url = $fg_product['checkoutUrl'] ?? ( $fg_product['checkout_url'] ?? '' );
+			if ( $checkout_url ) {
+				update_post_meta( $wc_id, '_fungies_checkout_url', $checkout_url );
+			}
 
-		$image_url = $fg_product['imageUrl'] ?? ( $fg_product['image_url'] ?? ( $fg_product['image'] ?? '' ) );
-		if ( $image_url && ! $is_update ) {
-			self::set_product_image( $wc_product_id, $image_url );
+			$image_url = $fg_product['imageUrl'] ?? ( $fg_product['image_url'] ?? '' );
+			if ( $image_url && ! $is_update ) {
+				self::set_product_image( $wc_id, $image_url );
+			}
 		}
 
 		return $is_update ? 'updated' : 'created';
@@ -171,25 +164,28 @@ class Fungies_Product_Sync {
 		$original = $offer['originalPrice'] ?? ( $offer['original_price'] ?? $price );
 		$currency = $offer['currency'] ?? 'USD';
 
-		update_post_meta( $product_id, '_fungies_offer_id', $offer_id );
-		update_post_meta( $product_id, '_regular_price', $original );
-		update_post_meta( $product_id, '_price', $price );
+		$price_dollars    = $price / 100;
+		$original_dollars = $original / 100;
 
-		if ( $original > $price ) {
-			update_post_meta( $product_id, '_sale_price', $price );
+		update_post_meta( $product_id, '_fungies_offer_id', $offer_id );
+		update_post_meta( $product_id, '_regular_price', $original_dollars );
+		update_post_meta( $product_id, '_price', $price_dollars );
+
+		if ( $original > $price && $price > 0 ) {
+			update_post_meta( $product_id, '_sale_price', $price_dollars );
 		}
 
 		update_post_meta( $product_id, '_fungies_currency', $currency );
 	}
 
-	private static function find_wc_product_by_fungies_id( $fungies_id ) {
+	private static function find_wc_product_by_offer_id( $offer_id ) {
 		global $wpdb;
 
 		$product_id = $wpdb->get_var( $wpdb->prepare(
 			"SELECT post_id FROM {$wpdb->postmeta}
-			 WHERE meta_key = '_fungies_product_id' AND meta_value = %s
+			 WHERE meta_key = '_fungies_offer_id' AND meta_value = %s
 			 LIMIT 1",
-			$fungies_id
+			$offer_id
 		) );
 
 		return $product_id ? (int) $product_id : null;

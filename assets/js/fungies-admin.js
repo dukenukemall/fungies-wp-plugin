@@ -5,32 +5,14 @@
     var isSandbox = $("#fungies_sandbox_mode").is(":checked");
 
     $('[data-env="production"]').each(function () {
-      $(this).prop("disabled", isSandbox);
-      $(this).closest("tr").css("opacity", isSandbox ? 0.4 : 1);
+      $(this).closest("tr").css("opacity", isSandbox ? 0.35 : 1);
+      $(this).css("pointer-events", isSandbox ? "none" : "auto");
     });
 
     $('[data-env="staging"]').each(function () {
-      $(this).prop("disabled", !isSandbox);
-      $(this).closest("tr").css("opacity", isSandbox ? 1 : 0.4);
+      $(this).closest("tr").css("opacity", isSandbox ? 1 : 0.35);
+      $(this).css("pointer-events", isSandbox ? "auto" : "none");
     });
-
-    var $prodTitle = $("h2")
-      .filter(function () {
-        return $(this).text().indexOf("Production") !== -1;
-      })
-      .first();
-    var $stagingTitle = $("h2")
-      .filter(function () {
-        return $(this).text().indexOf("Staging") !== -1;
-      })
-      .first();
-
-    if ($prodTitle.length) {
-      $prodTitle.next("p").addBack().css("opacity", isSandbox ? 0.4 : 1);
-    }
-    if ($stagingTitle.length) {
-      $stagingTitle.next("p").addBack().css("opacity", isSandbox ? 1 : 0.4);
-    }
 
     $("#fungies-active-host").text(
       isSandbox ? "api.stage.fungies.net" : "api.fungies.io"
