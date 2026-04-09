@@ -47,6 +47,7 @@ Fungies acts as your **Merchant of Record** — handling payments, taxes, and co
   ║                    FEATURE MATRIX                       ║
   ╠══════════════════════════════════════════════════════════╣
   ║  ✓  API Key Management          (Admin Settings)        ║
+  ║  ✓  Sandbox / Staging Mode      (api.stage.fungies.net) ║
   ║  ✓  Product Sync                (Fungies → WooCommerce) ║
   ║  ✓  Overlay Checkout            (Popup Modal)           ║
   ║  ✓  Embedded Checkout           (Inline on Page)        ║
@@ -133,42 +134,79 @@ Then activate via **WordPress Admin → Plugins**.
 
 ## Configuration
 
-### Step 1: Get Your API Keys
+### Step 1: Choose Your Environment
 
-1. Log in to your [Fungies Dashboard](https://app.fungies.io)
-2. Navigate to **Settings → API Keys**
-3. Copy your **Public Key** (`pub_...`) and **Secret Key** (`sec_...`)
-4. Copy your **Webhook Secret** from the Webhooks settings
+The plugin supports two environments:
 
-### Step 2: Plugin Settings
+| Environment | API URL | Dashboard | When to Use |
+|---|---|---|---|
+| **Production** | `api.fungies.io` | [app.fungies.io](https://app.fungies.io) | Live store with real payments |
+| **Sandbox (Staging)** | `api.stage.fungies.net` | [app.stage.fungies.net](https://app.stage.fungies.net) | Testing & development |
+
+> **Important:** Production and staging use **separate API keys**. Keys generated in the staging dashboard will NOT work against the production API, and vice versa.
+
+### Step 2: Get Your API Keys
+
+**For Production:**
+1. Log in to [app.fungies.io](https://app.fungies.io)
+2. Navigate to **Developers → API Keys**
+3. Click **Generate API Key**
+4. Copy your **Public Key** (`pub_...`) and **Secret Key** (`sec_...`)
+
+**For Sandbox/Staging:**
+1. Log in to [app.stage.fungies.net](https://app.stage.fungies.net)
+2. Navigate to **Developers → API Keys**
+3. Click **Generate API Key**
+4. Copy your **staging** Public Key and Secret Key
+
+Copy your **Webhook Secret** from the respective dashboard's Webhooks settings.
+
+### Step 3: Plugin Settings
 
 Navigate to **WooCommerce → Settings → Fungies**:
 
 ```
-  ┌─────────────────────────────────────────────────────┐
-  │              Fungies Settings                       │
-  ├─────────────────────────────────────────────────────┤
-  │                                                     │
-  │  Public Key:     [pub_xxxxxxxxxxxxx           ]     │
-  │  Secret Key:     [••••••••••••••••••          ]     │
-  │  Webhook Secret: [••••••••••••••••••          ]     │
-  │                                                     │
-  │  Checkout Mode:  [ Overlay (popup)          ▾]     │
-  │  Sandbox Mode:   [✓]                                │
-  │                                                     │
-  │  Webhook URL:    https://yoursite.com/wp-json/      │
-  │                  fungies/v1/webhook                  │
-  │                                                     │
-  │  [Test Connection]  ✓ Connection successful!        │
-  │  [  Sync Now     ]  Synced 12 products              │
-  │                                                     │
-  └─────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────┐
+  │  ENVIRONMENT                                            │
+  ├─────────────────────────────────────────────────────────┤
+  │  Sandbox Mode:  [✓] Enable sandbox/test mode            │
+  │  Routes API calls to api.stage.fungies.net              │
+  ├─────────────────────────────────────────────────────────┤
+  │  FUNGIES API KEYS                                       │
+  │  Enter your staging API keys from Fungies Staging       │
+  │  Dashboard → Developers → API Keys                      │
+  ├─────────────────────────────────────────────────────────┤
+  │  Public Key:     [pub_xxxxxxxxxxxxx             ]       │
+  │  Secret Key:     [••••••••••••••••••            ]       │
+  │  Webhook Secret: [••••••••••••••••••            ]       │
+  ├─────────────────────────────────────────────────────────┤
+  │  CHECKOUT SETTINGS                                      │
+  │  Checkout Mode:  [ Overlay (popup)            ▾]       │
+  ├─────────────────────────────────────────────────────────┤
+  │  CONNECTION & SYNC                                      │
+  │  Active API Host:  api.stage.fungies.net ⚠ SANDBOX     │
+  │  Webhook URL:      https://yoursite.com/wp-json/        │
+  │                    fungies/v1/webhook                    │
+  │  [Test Connection]  ✓ Connected to staging API!         │
+  │  [  Sync Now     ]  Synced 5 products                   │
+  └─────────────────────────────────────────────────────────┘
 ```
 
-### Step 3: Configure Webhook in Fungies
+### Step 4: Testing with Sandbox Mode
 
-1. Go to your Fungies Dashboard → **Webhooks**
-2. Add a new endpoint with the URL shown on the settings page
+1. **Check "Sandbox Mode"** and click **Save Changes**
+2. Paste your **staging API keys** (from `app.stage.fungies.net`) and **Save Changes**
+3. Click **Test Connection** — you should see "Connected to staging API!"
+4. Click **Sync Now** to pull staging products into WooCommerce
+5. Test the full checkout flow using [Stripe test cards](https://docs.stripe.com/testing#cards)
+6. Verify webhook events arrive by checking **WooCommerce → Status → Logs → `fungies-*`**
+
+> When you're ready to go live, uncheck Sandbox Mode, replace the keys with your **production keys** from `app.fungies.io`, and Save Changes.
+
+### Step 5: Configure Webhook in Fungies
+
+1. Go to your Fungies Dashboard → **Developers → Webhooks** (use the staging or production dashboard matching your current mode)
+2. Add a new endpoint with the **Webhook URL** shown on the plugin settings page
 3. Select the events: `payment_success`, `payment_failed`, `payment_refunded`, `subscription_created`, `subscription_interval`, `subscription_cancelled`
 
 ---
@@ -292,6 +330,12 @@ A: Every hour via WP Cron. You can also trigger a manual sync anytime from the s
 
 **Q: What happens if a webhook fails?**
 A: The plugin returns appropriate HTTP status codes. Configure retry logic in your Fungies webhook settings for resilience.
+
+**Q: How do I test without processing real payments?**
+A: Enable **Sandbox Mode** in the plugin settings. This routes all API calls to `api.stage.fungies.net`. Generate staging API keys at [app.stage.fungies.net](https://app.stage.fungies.net) and use [Stripe test cards](https://docs.stripe.com/testing#cards) at checkout. When ready, uncheck Sandbox Mode and switch to your production keys.
+
+**Q: Why does "Test Connection" say "API key is invalid"?**
+A: Make sure your keys match the selected environment. Staging keys only work with Sandbox Mode **enabled** (routes to `api.stage.fungies.net`). Production keys only work with Sandbox Mode **disabled** (routes to `api.fungies.io`).
 
 ---
 
