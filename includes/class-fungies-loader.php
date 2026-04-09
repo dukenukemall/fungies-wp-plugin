@@ -30,6 +30,7 @@ class Fungies_Loader {
 		require_once $dir . 'class-fungies-order-metabox.php';
 		require_once $dir . 'class-fungies-product-metabox.php';
 		require_once $dir . 'class-fungies-dashboard-widget.php';
+		require_once $dir . 'class-fungies-blocks-payment.php';
 	}
 
 	private function init_hooks() {
@@ -43,10 +44,24 @@ class Fungies_Loader {
 		Fungies_Dashboard_Widget::init();
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'register_gateway' ) );
+		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_payment' ) );
 	}
 
 	public function register_gateway( $gateways ) {
 		$gateways[] = 'Fungies_Payment_Gateway';
 		return $gateways;
+	}
+
+	public function register_blocks_payment() {
+		if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+			return;
+		}
+
+		add_action(
+			'woocommerce_blocks_payment_method_type_registration',
+			function ( $registry ) {
+				$registry->register( new Fungies_Blocks_Payment() );
+			}
+		);
 	}
 }
