@@ -8,7 +8,8 @@ class Fungies_API_Client {
 	private $secret_key;
 
 	public function __construct() {
-		$this->base_url   = FUNGIES_API_BASE_URL;
+		$sandbox = Fungies_Admin_Settings::get_option( 'sandbox_mode', 'no' ) === 'yes';
+		$this->base_url   = $sandbox ? FUNGIES_API_STAGING_URL : FUNGIES_API_BASE_URL;
 		$this->public_key = Fungies_Admin_Settings::get_option( 'public_key' );
 		$this->secret_key = Fungies_Admin_Settings::get_option( 'secret_key' );
 	}
@@ -80,7 +81,8 @@ class Fungies_API_Client {
 		$this->log( "Response {$code}: " . wp_json_encode( $data ) );
 
 		if ( $code < 200 || $code >= 300 ) {
-			$message = isset( $data['message'] ) ? $data['message'] : "HTTP {$code}";
+			$message = $data['error']['message']
+				?? ( $data['message'] ?? "HTTP {$code}" );
 			return new WP_Error( 'fungies_api_error', $message, array( 'status' => $code ) );
 		}
 
