@@ -136,14 +136,16 @@ Then activate via **WordPress Admin → Plugins**.
 
 ### Step 1: Choose Your Environment
 
-The plugin supports two environments:
+The plugin supports two environments. See [Fungies Sandbox Mode docs](https://help.fungies.io/workspace-settings/sandbox-mode) for full details.
 
-| Environment | API URL | Dashboard | When to Use |
+| Environment | API URL | Dashboard | API Docs |
 |---|---|---|---|
-| **Production** | `api.fungies.io` | [app.fungies.io](https://app.fungies.io) | Live store with real payments |
-| **Sandbox (Staging)** | `api.stage.fungies.net` | [app.stage.fungies.net](https://app.stage.fungies.net) | Testing & development |
+| **Production** | `https://api.fungies.io/v0` | [app.fungies.io](https://app.fungies.io) | [docs.fungies.io](https://docs.fungies.io/api-reference/introduction) |
+| **Sandbox (Staging)** | `https://api.stage.fungies.net/v0` | [app.stage.fungies.net](https://app.stage.fungies.net) | [Staging Swagger](https://api.stage.fungies.net/v0/api-docs/) |
 
-> **Important:** Production and staging use **separate API keys**. Keys generated in the staging dashboard will NOT work against the production API, and vice versa.
+> **Important:** Production and staging are **completely separate**. API keys, products, subscriptions, Stripe payouts, and webhooks are all independent between environments. Staging keys will NOT work against the production API, and vice versa.
+>
+> **Note:** The staging dashboard works without approval, but **Storefront, Checkout, and Overlay in staging need to be approved**. Email [support@fungies.io](mailto:support@fungies.io) to get your staging checkout activated.
 
 ### Step 2: Get Your API Keys
 
@@ -154,7 +156,7 @@ The plugin supports two environments:
 4. Copy your **Public Key** (`pub_...`) and **Secret Key** (`sec_...`)
 
 **For Sandbox/Staging:**
-1. Log in to [app.stage.fungies.net](https://app.stage.fungies.net)
+1. Register at [app.stage.fungies.net/register](https://app.stage.fungies.net/register) (separate account from production)
 2. Navigate to **Developers → API Keys**
 3. Click **Generate API Key**
 4. Copy your **staging** Public Key and Secret Key
@@ -198,7 +200,7 @@ Navigate to **WooCommerce → Settings → Fungies**:
 2. Paste your **staging API keys** (from `app.stage.fungies.net`) and **Save Changes**
 3. Click **Test Connection** — you should see "Connected to staging API!"
 4. Click **Sync Now** to pull staging products into WooCommerce
-5. Test the full checkout flow using [Stripe test cards](https://docs.stripe.com/testing#cards)
+5. Test the full checkout flow using [Stripe test cards](https://docs.stripe.com/testing?testing-method=card-numbers)
 6. Verify webhook events arrive by checking **WooCommerce → Status → Logs → `fungies-*`**
 
 > When you're ready to go live, uncheck Sandbox Mode, replace the keys with your **production keys** from `app.fungies.io`, and Save Changes.
@@ -332,7 +334,7 @@ A: Every hour via WP Cron. You can also trigger a manual sync anytime from the s
 A: The plugin returns appropriate HTTP status codes. Configure retry logic in your Fungies webhook settings for resilience.
 
 **Q: How do I test without processing real payments?**
-A: Enable **Sandbox Mode** in the plugin settings. This routes all API calls to `api.stage.fungies.net`. Generate staging API keys at [app.stage.fungies.net](https://app.stage.fungies.net) and use [Stripe test cards](https://docs.stripe.com/testing#cards) at checkout. When ready, uncheck Sandbox Mode and switch to your production keys.
+A: Enable **Sandbox Mode** in the plugin settings. This routes all API calls to `api.stage.fungies.net`. Register a staging account at [app.stage.fungies.net/register](https://app.stage.fungies.net/register), generate staging API keys, and use [Stripe test cards](https://docs.stripe.com/testing?testing-method=card-numbers) at checkout. Note: staging checkout/overlay needs approval — email [support@fungies.io](mailto:support@fungies.io). When ready, uncheck Sandbox Mode and switch to production keys.
 
 **Q: Why does "Test Connection" say "API key is invalid"?**
 A: Make sure your keys match the selected environment. Staging keys only work with Sandbox Mode **enabled** (routes to `api.stage.fungies.net`). Production keys only work with Sandbox Mode **disabled** (routes to `api.fungies.io`).
