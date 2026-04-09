@@ -41,6 +41,7 @@ class Fungies_Blocks_Payment extends AbstractPaymentMethodType {
 			'title'       => $this->get_setting( 'title' ),
 			'description' => $this->get_setting( 'description' ),
 			'supports'    => $this->get_supported_features(),
+			'icon'        => FUNGIES_WP_PLUGIN_URL . 'assets/img/fungies-icon.png',
 		);
 	}
 }

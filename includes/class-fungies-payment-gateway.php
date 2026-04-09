@@ -5,7 +5,7 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 
 	public function __construct() {
 		$this->id                 = 'fungies';
-		$this->icon               = '';
+		$this->icon               = FUNGIES_WP_PLUGIN_URL . 'assets/img/fungies-icon.png';
 		$this->has_fields         = false;
 		$this->method_title       = __( 'Fungies Checkout', 'fungies-wp' );
 		$this->method_description = __( 'Accept payments via Fungies — the merchant of record handles payments, taxes, and compliance.', 'fungies-wp' );
