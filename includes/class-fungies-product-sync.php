@@ -39,22 +39,7 @@ class Fungies_Product_Sync {
 		$offers_list = self::filter_one_time_payment( $offers_list );
 		self::log( count( $offers_list ) . ' OneTimePayment offers after filter.' );
 
-		$products_response = $client->get_products();
-		$products_list     = array();
-		if ( ! is_wp_error( $products_response ) ) {
-			$products_list = self::extract_list( $products_response, 'products' );
-			self::log( 'Fetched ' . count( $products_list ) . ' products.' );
-		} else {
-			self::log( 'Products endpoint unavailable, syncing from offers only.', 'warning' );
-		}
-
-		$products_by_id = array();
-		foreach ( $products_list as $p ) {
-			if ( ! empty( $p['id'] ) ) {
-				$products_by_id[ $p['id'] ] = $p;
-			}
-		}
-
+		$product_cache = array();
 		$synced  = 0;
 		$created = 0;
 		$updated = 0;
@@ -62,7 +47,11 @@ class Fungies_Product_Sync {
 		foreach ( $offers_list as $offer ) {
 			$offer_id   = $offer['id'] ?? '';
 			$product_id = $offer['productId'] ?? ( $offer['product_id'] ?? '' );
-			$fg_product = $product_id ? ( $products_by_id[ $product_id ] ?? null ) : null;
+			$fg_product = null;
+
+			if ( $product_id ) {
+				$fg_product = self::get_product_cached( $client, $product_id, $product_cache );
+			}
 
 			$result = self::sync_from_offer( $offer, $fg_product );
 
@@ -90,6 +79,30 @@ class Fungies_Product_Sync {
 			'updated' => $updated,
 			'message' => $summary,
 		);
+	}
+
+	private static function get_product_cached( $client, $product_id, &$cache ) {
+		if ( isset( $cache[ $product_id ] ) ) {
+			return $cache[ $product_id ];
+		}
+
+		self::log( 'Fetching product details: ' . $product_id );
+		$response = $client->get_product( $product_id );
+
+		if ( is_wp_error( $response ) ) {
+			self::log( 'Product fetch failed for ' . $product_id . ': ' . $response->get_error_message(), 'warning' );
+			$cache[ $product_id ] = null;
+			return null;
+		}
+
+		$product = $response['data']['product'] ?? ( $response['product'] ?? null );
+		$cache[ $product_id ] = $product;
+
+		if ( $product ) {
+			self::log( 'Product loaded: ' . ( $product['name'] ?? '(no name)' ) );
+		}
+
+		return $product;
 	}
 
 	private static function filter_one_time_payment( $offers ) {
@@ -122,10 +135,13 @@ class Fungies_Product_Sync {
 		$existing  = self::find_wc_product_by_offer_id( $offer_id );
 		$is_update = (bool) $existing;
 
-		$name = $offer['name']
-			?? ( $fg_product['name'] ?? ( 'Fungies Offer ' . substr( $offer_id, 0, 8 ) ) );
-		$desc = $offer['description']
-			?? ( $fg_product['description'] ?? '' );
+		$name = ! empty( $fg_product['name'] )
+			? $fg_product['name']
+			: ( $offer['name'] ?? ( 'Fungies Offer ' . substr( $offer_id, 0, 8 ) ) );
+
+		$desc = ! empty( $fg_product['description'] )
+			? $fg_product['description']
+			: ( $offer['description'] ?? '' );
 
 		$product_data = array(
 			'post_title'   => $name,
@@ -154,23 +170,42 @@ class Fungies_Product_Sync {
 		self::apply_offer_meta( $wc_id, $offer );
 
 		if ( $fg_product ) {
-			$fg_pid = $fg_product['id'] ?? '';
-			if ( $fg_pid ) {
-				update_post_meta( $wc_id, '_fungies_product_id', $fg_pid );
-			}
-
-			$checkout_url = $fg_product['checkoutUrl'] ?? ( $fg_product['checkout_url'] ?? '' );
-			if ( $checkout_url ) {
-				update_post_meta( $wc_id, '_fungies_checkout_url', $checkout_url );
-			}
-
-			$image_url = $fg_product['imageUrl'] ?? ( $fg_product['image_url'] ?? '' );
-			if ( $image_url && ! $is_update ) {
-				self::set_product_image( $wc_id, $image_url );
-			}
+			self::apply_product_meta( $wc_id, $fg_product, $is_update );
 		}
 
 		return $is_update ? 'updated' : 'created';
+	}
+
+	private static function apply_product_meta( $wc_id, $fg_product, $is_update ) {
+		$fg_pid = $fg_product['id'] ?? '';
+		if ( $fg_pid ) {
+			update_post_meta( $wc_id, '_fungies_product_id', $fg_pid );
+		}
+
+		$type = $fg_product['type'] ?? '';
+		if ( $type ) {
+			update_post_meta( $wc_id, '_fungies_product_type', $type );
+		}
+
+		$checkout_url = $fg_product['checkoutUrl'] ?? ( $fg_product['checkout_url'] ?? '' );
+		if ( $checkout_url ) {
+			update_post_meta( $wc_id, '_fungies_checkout_url', $checkout_url );
+		}
+
+		$developer = $fg_product['developer'] ?? '';
+		if ( $developer ) {
+			update_post_meta( $wc_id, '_fungies_developer', $developer );
+		}
+
+		$publisher = $fg_product['publisher'] ?? '';
+		if ( $publisher ) {
+			update_post_meta( $wc_id, '_fungies_publisher', $publisher );
+		}
+
+		$image_url = $fg_product['imageUrl'] ?? ( $fg_product['image_url'] ?? '' );
+		if ( $image_url && ! $is_update ) {
+			self::set_product_image( $wc_id, $image_url );
+		}
 	}
 
 	private static function apply_offer_meta( $product_id, $offer ) {

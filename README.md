@@ -277,6 +277,23 @@ Currently, only **OneTimePayment** offers are synced from Fungies to WooCommerce
 | VirtualCurrency | Not yet |
 | Virtualitem | Not yet |
 
+### Sync Flow
+
+```
+  GET /offers/list                  ← filter by product.types=OneTimePayment
+       │
+       ▼
+  For each offer with productId:
+       │
+       ▼
+  GET /products/{productId}         ← fetch rich product details
+       │
+       ▼
+  Create/update WooCommerce product ← merge offer pricing + product details
+```
+
+Product details are fetched individually per `productId` (with caching), avoiding the unreliable `/products/list` endpoint.
+
 ### Field Mapping
 
 ```
@@ -286,10 +303,13 @@ Currently, only **OneTimePayment** offers are synced from Fungies to WooCommerce
   │ Product.name         │────────►│ post_title            │
   │ Product.description  │────────►│ post_content          │
   │ Product.id           │────────►│ _fungies_product_id   │
+  │ Product.type         │────────►│ _fungies_product_type │
   │ Product.checkoutUrl  │────────►│ _fungies_checkout_url │
   │ Product.imageUrl     │────────►│ Featured image        │
+  │ Product.developer    │────────►│ _fungies_developer    │
+  │ Product.publisher    │────────►│ _fungies_publisher    │
   │ Offer.id             │────────►│ _fungies_offer_id     │
-  │ Offer.price          │────────►│ _price / _sale_price  │
+  │ Offer.price (cents)  │────────►│ _price / _sale_price  │
   │ Offer.originalPrice  │────────►│ _regular_price        │
   │ Offer.currency       │────────►│ _fungies_currency     │
   └──────────────────────┘          └──────────────────────┘
