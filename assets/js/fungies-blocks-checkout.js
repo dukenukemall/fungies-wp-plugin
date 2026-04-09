@@ -23,6 +23,7 @@ registerPaymentMethod({
   content: window.wp.element.createElement(FungiesContent, null),
   edit: window.wp.element.createElement(FungiesContent, null),
   canMakePayment: () => true,
+  paymentMethodId: "fungies",
   ariaLabel: title,
   supports: {
     features: settings.supports || ["products"],

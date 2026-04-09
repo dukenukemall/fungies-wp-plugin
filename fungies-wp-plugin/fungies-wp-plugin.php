@@ -3,7 +3,7 @@
  * Plugin Name: Fungies for WooCommerce
  * Plugin URI: https://github.com/dukenukemall/fungies-wp-plugin
  * Description: Connect your WooCommerce store to Fungies.io — sync products, use Fungies checkout, and keep orders in sync.
- * Version: 1.3.1
+ * Version: 1.0.0
  * Author: Fungies
  * Author URI: https://fungies.io
  * License: GPL v2 or later
@@ -19,21 +19,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'FUNGIES_WP_VERSION', '1.3.1' );
+define( 'FUNGIES_WP_VERSION', '1.0.0' );
 define( 'FUNGIES_WP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_FILE', __FILE__ );
 define( 'FUNGIES_API_BASE_URL', 'https://api.fungies.io/v0' );
-define( 'FUNGIES_API_STAGING_URL', 'https://api.stage.fungies.net/v0' );
 
 require_once FUNGIES_WP_PLUGIN_DIR . 'includes/class-fungies-loader.php';
-
-add_action( 'before_woocommerce_init', function () {
-	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
-		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
-	}
-} );
 
 function fungies_wp_init() {
 	if ( ! class_exists( 'WooCommerce' ) ) {
