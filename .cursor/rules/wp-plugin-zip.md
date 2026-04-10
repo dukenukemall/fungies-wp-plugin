@@ -1,52 +1,66 @@
 # WordPress Plugin ZIP Build Rules
 
+## Zip Filename Convention
+
+Always name the zip: `fungies-checkout-{version}.zip` (e.g., `fungies-checkout-1.9.6.zip`).
+
 ## CRITICAL: FLAT ZIP Structure
 
 The zip must be **FLAT** — files directly at the root of the zip, NO wrapper folder. WordPress creates the plugin folder automatically on extraction.
 
 ### Correct structure (inside zip):
 ```
-fungies-wp-plugin.php          ← main plugin file at zip root
-includes/class-*.php           ← subfolder OK
-assets/js/*.js                 ← subfolder OK
-assets/css/*.css               ← subfolder OK
-templates/*.php                ← subfolder OK
+fungies-wp-plugin.php          <- main plugin file at zip root (MUST have valid Plugin Name header)
+includes/class-*.php           <- subfolder OK
+assets/js/*.js                 <- subfolder OK
+assets/css/*.css               <- subfolder OK
+templates/*.php                <- subfolder OK
+README.md                      <- OK
 ```
 
 ### WRONG — has wrapper folder:
 ```
-fungies-checkout/              ← BAD! no wrapper folder allowed
+fungies-checkout/              <- BAD! no wrapper folder allowed
   fungies-wp-plugin.php
   includes/...
 ```
 
-### WRONG — double nested:
+### WRONG — duplicate plugin directories:
 ```
-fungies-checkout/
-  fungies-checkout/            ← BAD! extra folder level
-    fungies-wp-plugin.php
+fungies-wp-plugin.php          <- main file
+fungies-wp-plugin/             <- BAD! stale subdirectory with second plugin header
+  fungies-wp-plugin.php        <- causes "plugin does not have a valid header" error
 ```
 
-## Build Script (PowerShell)
+## Files that must NOT be in the zip
 
-ALWAYS use .NET `System.IO.Compression.ZipFile` — never `Compress-Archive`.
-Entry names are the relative file path with NO folder prefix.
+- `.gitignore`, `.gitattributes`
+- `.env`
+- `.cursor/` directory
+- `agent-transcripts/` directory
+- Any stale subdirectories containing duplicate `fungies-wp-plugin.php`
 
+## Valid Plugin Header
+
+The main `fungies-wp-plugin.php` MUST start with a valid WordPress plugin header:
+```php
+<?php
+/**
+ * Plugin Name: Fungies for WooCommerce
+ * Version: X.Y.Z
+ * ...
+ */
+```
+Without this header, WordPress shows "The plugin does not have a valid header."
+
+## Build Command
+
+Use `git archive` with `.gitattributes` export-ignore rules:
 ```powershell
-$zipName = "fungies-checkout-VERSION.zip"
-$zipPath = "FULL_PATH\$zipName"
-$srcDir  = "FULL_PATH_TO_PLUGIN_SOURCE"
-
-if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [System.IO.Compression.ZipFile]::Open($zipPath, 'Create')
-
-# Entry names are the relative path — NO folder prefix
-$entryName = $relativeFilePath -replace '\\','/'
-[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $fullPath, $entryName)
-
-$zip.Dispose()
+git archive --format=zip HEAD -o fungies-checkout-VERSION.zip
 ```
+
+The `.gitattributes` file controls what gets excluded via `export-ignore`.
 
 ## Version Bumping
 
@@ -65,4 +79,7 @@ $z.Entries | Select-Object FullName
 $z.Dispose()
 ```
 
-Confirm the first entry is `fungies-wp-plugin.php` (NOT `fungies-checkout/fungies-wp-plugin.php`).
+Confirm:
+1. `fungies-wp-plugin.php` is at the zip root (NOT inside a subdirectory)
+2. There is only ONE `fungies-wp-plugin.php` in the entire zip
+3. No `.env`, `.gitignore`, `.cursor/` or stale directories are present

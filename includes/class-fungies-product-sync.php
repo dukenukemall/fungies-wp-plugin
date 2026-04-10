@@ -27,7 +27,7 @@ class Fungies_Product_Sync {
 	public static function sync() {
 		$client = new Fungies_API_Client();
 
-		$products_response = $client->get( '/products/list', array( 'types[]' => 'OneTimePayment' ) );
+		$products_response = $client->get( '/products/list?types[]=OneTimePayment' );
 		if ( is_wp_error( $products_response ) ) {
 			self::log( 'Products fetch failed: ' . $products_response->get_error_message(), 'error' );
 			return $products_response;
