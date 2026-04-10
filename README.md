@@ -129,7 +129,17 @@ Navigate to **WooCommerce → Settings → Fungies** and fill in:
 | Webhook Secret | From Fungies webhook settings |
 | **Fungies Store URL** | Your store URL (see Step 4) |
 
-### Step 4: Publish Your Fungies Store & Get the Store URL
+### Step 4: Match Store Currencies
+
+> **Your WooCommerce store currency must match the currency set in your Fungies workspace.**
+
+1. Check your Fungies currency in **Fungies Dashboard → Settings → General** (under "Currency")
+2. Check your WooCommerce currency in **WooCommerce → Settings → General** (under "Currency options")
+3. Make sure both are set to the same currency (e.g. both USD, both EUR)
+
+If the currencies don't match, product prices will display incorrectly and checkout totals may be wrong.
+
+### Step 5: Publish Your Fungies Store & Get the Store URL
 
 > **Your Fungies store must be published for the hosted checkout to work.**
 
@@ -141,14 +151,14 @@ Navigate to **WooCommerce → Settings → Fungies** and fill in:
 4. Paste it into the **Fungies Store URL** field in WooCommerce → Settings → Fungies
 5. Click **Save Changes**
 
-### Step 5: Configure Webhook in Fungies
+### Step 6: Configure Webhook in Fungies
 
 1. Go to **Fungies Dashboard → Developers → Webhooks**
 2. Add a new endpoint with the **Webhook URL** shown on the plugin settings page
    (e.g. `https://yoursite.com/wp-json/fungies/v1/webhook`)
 3. Select the events: `payment_success`, `payment_failed`, `payment_refunded`, `subscription_created`, `subscription_interval`, `subscription_cancelled`
 
-### Step 6: Configure Post-Purchase Redirect URL in Fungies
+### Step 7: Configure Post-Purchase Redirect URL in Fungies
 
 After a customer completes payment on Fungies, they need to be redirected back to your WooCommerce store. This is configured **store-wide** in the Fungies Dashboard.
 
@@ -174,7 +184,7 @@ After a customer completes payment on Fungies, they need to be redirected back t
 
 See the [Fungies redirect documentation](https://help.fungies.io/for-saas-developers/redirecting-after-purchase) for more details on available system parameters.
 
-### Step 7: Test the Full Flow
+### Step 8: Test the Full Flow
 
 1. Enable **Sandbox Mode** and use staging keys
 2. Click **Sync Now** to pull products
@@ -263,7 +273,7 @@ When a payment succeeds, the following metadata is stored on the WC order:
 A: Yes. The hosted checkout URL only works when your Fungies store is published. Go to the Fungies Dashboard and make sure your store is not in draft mode.
 
 **Q: Why don't customers get redirected back after payment?**
-A: You need to configure the **Instant Redirect URL** in Fungies Dashboard → Settings → Store → Checkout tab. See [Step 6](#step-6-configure-post-purchase-redirect-url-in-fungies) above.
+A: You need to configure the **Instant Redirect URL** in Fungies Dashboard → Settings → Store → Checkout tab. See [Step 7](#step-7-configure-post-purchase-redirect-url-in-fungies) above.
 
 **Q: Can I use this alongside other WC payment gateways?**
 A: Yes. Fungies registers as a standard WC payment gateway. Customers can choose it at checkout alongside any other enabled gateways.
