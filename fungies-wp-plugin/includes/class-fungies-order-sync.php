@@ -62,6 +62,11 @@ class Fungies_Order_Sync {
 		}
 
 		if ( ! $wc_order ) {
+			self::log( 'Looking up pending Fungies order by billing email...' );
+			$wc_order = self::find_pending_order_by_email( $ev );
+		}
+
+		if ( ! $wc_order ) {
 			self::log( 'No existing WC order found — creating from webhook data.' );
 			$wc_order = self::create_order_from_webhook( $ev );
 		}
@@ -237,10 +242,55 @@ class Fungies_Order_Sync {
 
 		$fungies_order_id = $ev['order']['id'] ?? '';
 		if ( $fungies_order_id ) {
-			return self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
+			$order = self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
+			if ( $order ) return $order;
 		}
 
-		return null;
+		return self::find_pending_order_by_email( $ev );
+	}
+
+	private static function find_pending_order_by_email( $ev ) {
+		$customer = $ev['customer'];
+		$email    = $customer['email'] ?? ( $customer['username'] ?? '' );
+
+		if ( ! $email || ! is_email( $email ) ) {
+			return null;
+		}
+
+		$offer_id = '';
+		foreach ( $ev['items'] as $item ) {
+			$offer = $item['offer'] ?? array();
+			$offer_id = $offer['id'] ?? ( $item['offerId'] ?? '' );
+			if ( $offer_id ) break;
+		}
+
+		$orders = wc_get_orders( array(
+			'status'         => 'pending',
+			'payment_method' => 'fungies',
+			'billing_email'  => $email,
+			'limit'          => 5,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		) );
+
+		if ( empty( $orders ) ) {
+			return null;
+		}
+
+		if ( $offer_id ) {
+			foreach ( $orders as $order ) {
+				foreach ( $order->get_items() as $item ) {
+					$product = $item->get_product();
+					if ( $product && $product->get_meta( '_fungies_offer_id' ) === $offer_id ) {
+						self::log( sprintf( 'Matched pending order #%d by email + offer ID', $order->get_id() ) );
+						return $order;
+					}
+				}
+			}
+		}
+
+		self::log( sprintf( 'Matched pending order #%d by email (fallback)', $orders[0]->get_id() ) );
+		return $orders[0];
 	}
 
 	private static function find_order_by_meta( $key, $value ) {

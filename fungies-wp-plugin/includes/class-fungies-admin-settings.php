@@ -21,57 +21,107 @@ class Fungies_Admin_Settings {
 	public static function get_settings() {
 		return array(
 			array(
-				'title' => __( 'Fungies API Settings', 'fungies-wp' ),
+				'title' => __( 'Environment', 'fungies-wp' ),
 				'type'  => 'title',
-				'id'    => 'fungies_api_settings',
+				'id'    => 'fungies_env_settings',
 			),
-			array(
-				'title'    => __( 'Public Key', 'fungies-wp' ),
-				'desc'     => __( 'Your Fungies public API key (starts with pub_)', 'fungies-wp' ),
-				'id'       => self::OPTION_PREFIX . 'public_key',
-				'type'     => 'text',
-				'css'      => 'min-width: 400px;',
-			),
-			array(
-				'title'    => __( 'Secret Key', 'fungies-wp' ),
-				'desc'     => __( 'Your Fungies secret API key (starts with sec_)', 'fungies-wp' ),
-				'id'       => self::OPTION_PREFIX . 'secret_key',
-				'type'     => 'password',
-				'css'      => 'min-width: 400px;',
-			),
-			array(
-				'title'    => __( 'Webhook Secret', 'fungies-wp' ),
-				'desc'     => __( 'Used to verify webhook signatures from Fungies', 'fungies-wp' ),
-				'id'       => self::OPTION_PREFIX . 'webhook_secret',
-				'type'     => 'password',
-				'css'      => 'min-width: 400px;',
-			),
-		array(
-			'title'    => __( 'Checkout Mode', 'fungies-wp' ),
-			'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
-			'id'       => self::OPTION_PREFIX . 'checkout_mode',
-			'type'     => 'select',
-			'options'  => array(
-				'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
-			),
-			'default'  => 'hosted',
-		),
-		array(
-			'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
-			'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
-			'id'          => self::OPTION_PREFIX . 'store_url',
-			'type'        => 'text',
-			'css'         => 'min-width: 400px;',
-			'placeholder' => 'https://yourname.app.fungies.io',
-		),
 			array(
 				'title'    => __( 'Sandbox Mode', 'fungies-wp' ),
-				'desc'     => __( 'Enable sandbox/test mode', 'fungies-wp' ),
+				'desc'     => __( 'Enable sandbox/test mode — routes all API calls to <code>api.stage.fungies.net</code>', 'fungies-wp' ),
 				'id'       => self::OPTION_PREFIX . 'sandbox_mode',
 				'type'     => 'checkbox',
 				'default'  => 'no',
 			),
-			array( 'type' => 'sectionend', 'id' => 'fungies_api_settings' ),
+			array( 'type' => 'sectionend', 'id' => 'fungies_env_settings' ),
+
+			array(
+				'title' => __( 'Production API Keys', 'fungies-wp' ),
+				'type'  => 'title',
+				'desc'  => __( 'Enter your <strong>production</strong> keys from <a href="https://app.fungies.io/devs/api-keys" target="_blank">Fungies Dashboard → Developers → API Keys</a>.', 'fungies-wp' ),
+				'id'    => 'fungies_prod_settings',
+			),
+			array(
+				'title'    => __( 'Public Key', 'fungies-wp' ),
+				'desc'     => __( 'Production public API key (starts with pub_)', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'public_key',
+				'type'     => 'text',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'production' ),
+			),
+			array(
+				'title'    => __( 'Secret Key', 'fungies-wp' ),
+				'desc'     => __( 'Production secret API key (starts with sec_)', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'secret_key',
+				'type'     => 'password',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'production' ),
+			),
+			array(
+				'title'    => __( 'Webhook Secret', 'fungies-wp' ),
+				'desc'     => __( 'Production webhook signature secret', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'webhook_secret',
+				'type'     => 'password',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'production' ),
+			),
+			array( 'type' => 'sectionend', 'id' => 'fungies_prod_settings' ),
+
+			array(
+				'title' => __( 'Staging API Keys', 'fungies-wp' ),
+				'type'  => 'title',
+				'desc'  => __( 'Enter your <strong>staging</strong> keys from <a href="https://app.stage.fungies.net/devs/api-keys" target="_blank">Fungies Staging Dashboard → Developers → API Keys</a>.', 'fungies-wp' ),
+				'id'    => 'fungies_staging_settings',
+			),
+			array(
+				'title'    => __( 'Staging Public Key', 'fungies-wp' ),
+				'desc'     => __( 'Staging public API key (starts with pub_)', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'staging_public_key',
+				'type'     => 'text',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'staging' ),
+			),
+			array(
+				'title'    => __( 'Staging Secret Key', 'fungies-wp' ),
+				'desc'     => __( 'Staging secret API key (starts with sec_)', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'staging_secret_key',
+				'type'     => 'password',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'staging' ),
+			),
+			array(
+				'title'    => __( 'Staging Webhook Secret', 'fungies-wp' ),
+				'desc'     => __( 'Staging webhook signature secret', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'staging_webhook_secret',
+				'type'     => 'password',
+				'css'      => 'min-width: 400px;',
+				'custom_attributes' => array( 'data-env' => 'staging' ),
+			),
+			array( 'type' => 'sectionend', 'id' => 'fungies_staging_settings' ),
+
+			array(
+				'title' => __( 'Checkout Settings', 'fungies-wp' ),
+				'type'  => 'title',
+				'id'    => 'fungies_checkout_settings',
+			),
+			array(
+				'title'    => __( 'Checkout Mode', 'fungies-wp' ),
+				'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'checkout_mode',
+				'type'     => 'select',
+				'options'  => array(
+					'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
+				),
+				'default'  => 'hosted',
+			),
+			array(
+				'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
+				'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
+				'id'          => self::OPTION_PREFIX . 'store_url',
+				'type'        => 'text',
+				'css'         => 'min-width: 400px;',
+				'placeholder' => 'https://yourname.app.fungies.io',
+			),
+			array( 'type' => 'sectionend', 'id' => 'fungies_checkout_settings' ),
 		);
 	}
 
@@ -79,14 +129,40 @@ class Fungies_Admin_Settings {
 		woocommerce_admin_fields( self::get_settings() );
 
 		$webhook_url = rest_url( 'fungies/v1/webhook' );
+		$return_url  = Fungies_Checkout::get_return_url();
 		?>
+		<h2><?php esc_html_e( 'Connection & Sync', 'fungies-wp' ); ?></h2>
 		<table class="form-table">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Active API Host', 'fungies-wp' ); ?></th>
+				<td>
+					<code id="fungies-active-host">api.fungies.io</code>
+					<span id="fungies-sandbox-badge" style="color:#b26200;font-weight:bold;margin-left:8px;display:none;">⚠ SANDBOX</span>
+					<span id="fungies-prod-badge" style="color:#2e7d32;font-weight:bold;margin-left:8px;">🟢 PRODUCTION</span>
+				</td>
+			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Webhook URL', 'fungies-wp' ); ?></th>
 				<td>
 					<code><?php echo esc_url( $webhook_url ); ?></code>
 					<p class="description">
-						<?php esc_html_e( 'Paste this URL into your Fungies dashboard webhook settings.', 'fungies-wp' ); ?>
+						<?php esc_html_e( 'Paste this URL into Fungies Dashboard → Developers → Webhooks.', 'fungies-wp' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Post-Purchase Redirect URL', 'fungies-wp' ); ?></th>
+				<td>
+					<code><?php echo esc_url( $return_url ); ?></code>
+					<p class="description">
+						<?php
+						printf(
+							wp_kses(
+								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameters <code>fngs-order-id</code> and <code>fngs-user-email</code> so Fungies appends the order ID and customer email to the redirect.', 'fungies-wp' ),
+								array( 'strong' => array(), 'br' => array(), 'code' => array() )
+							)
+						);
+						?>
 					</p>
 				</td>
 			</tr>
@@ -160,14 +236,56 @@ class Fungies_Admin_Settings {
 			wp_send_json_error( __( 'Permission denied.', 'fungies-wp' ) );
 		}
 
-		$client   = new Fungies_API_Client();
-		$response = $client->get( '/products/list' );
+		$is_sandbox = self::is_sandbox();
+		$pub_key    = self::get_active_public_key();
+		$sec_key    = self::get_active_secret_key();
+		$env        = $is_sandbox ? 'staging' : 'production';
+		$host       = $is_sandbox ? 'api.stage.fungies.net' : 'api.fungies.io';
 
-		if ( is_wp_error( $response ) ) {
-			wp_send_json_error( $response->get_error_message() );
+		if ( empty( $pub_key ) ) {
+			wp_send_json_error(
+				sprintf( 'No %s public key saved. Enter your key and click Save Changes first.', $env )
+			);
 		}
 
-		wp_send_json_success( __( 'Connection successful!', 'fungies-wp' ) );
+		$client   = new Fungies_API_Client();
+		$response = $client->get( '/offers/list' );
+
+		if ( is_wp_error( $response ) ) {
+			$key_preview = substr( $pub_key, 0, 8 ) . '...';
+			wp_send_json_error(
+				sprintf(
+					'%s — Make sure you hit Save Changes before testing the connection. [%s → %s, key: %s]',
+					$response->get_error_message(), $env, $host, $key_preview
+				)
+			);
+		}
+
+		wp_send_json_success(
+			sprintf( __( 'Connected to %s API! (%s)', 'fungies-wp' ), $env, $host )
+		);
+	}
+
+	public static function is_sandbox() {
+		return self::get_option( 'sandbox_mode', 'no' ) === 'yes';
+	}
+
+	public static function get_active_public_key() {
+		return self::is_sandbox()
+			? self::get_option( 'staging_public_key' )
+			: self::get_option( 'public_key' );
+	}
+
+	public static function get_active_secret_key() {
+		return self::is_sandbox()
+			? self::get_option( 'staging_secret_key' )
+			: self::get_option( 'secret_key' );
+	}
+
+	public static function get_active_webhook_secret() {
+		return self::is_sandbox()
+			? self::get_option( 'staging_webhook_secret' )
+			: self::get_option( 'webhook_secret' );
 	}
 
 	public static function get_option( $key, $default = '' ) {

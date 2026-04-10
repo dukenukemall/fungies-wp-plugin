@@ -158,7 +158,7 @@ class Fungies_Admin_Settings {
 						<?php
 						printf(
 							wp_kses(
-								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameter <code>fngs-order-id</code> so Fungies appends the order ID to the redirect.', 'fungies-wp' ),
+								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameters <code>fngs-order-id</code> and <code>fngs-user-email</code> so Fungies appends the order ID and customer email to the redirect.', 'fungies-wp' ),
 								array( 'strong' => array(), 'br' => array(), 'code' => array() )
 							)
 						);

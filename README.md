@@ -158,11 +158,12 @@ After a customer completes payment on Fungies, they need to be redirected back t
    ```
    https://yoursite.com/?wc-api=fungies_return
    ```
-4. In **URL Parameters**, add the system parameter: **`fngs-order-id`**
-   - This tells Fungies to append the order ID to the redirect URL so the plugin can find the correct WooCommerce order
+4. In **URL Parameters**, add these system parameters:
+   - **`fngs-order-id`** — so Fungies appends the order ID to the redirect
+   - **`fngs-user-email`** — so Fungies appends the customer email to the redirect
 5. The final redirect URL will look like:
    ```
-   https://yoursite.com/?wc-api=fungies_return&fngs-order-id={fngs-order-id}
+   https://yoursite.com/?wc-api=fungies_return&fngs-order-id={fngs-order-id}&fngs-user-email={fngs-user-email}
    ```
 6. Click **Save**
 
