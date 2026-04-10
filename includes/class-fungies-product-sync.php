@@ -36,37 +36,20 @@ class Fungies_Product_Sync {
 		$offers_list = self::extract_list( $offers_response, 'offers' );
 		self::log( 'Fetched ' . count( $offers_list ) . ' offers from API.' );
 
-		$offers_list = self::filter_one_time_payment( $offers_list );
-		self::log( count( $offers_list ) . ' OneTimePayment offers after filter.' );
-
 		$offer_product_map = self::build_offer_product_map( $client );
-
-		$product_cache = array();
 		$synced  = 0;
 		$created = 0;
 		$updated = 0;
 
 		foreach ( $offers_list as $offer ) {
-			$offer_id   = $offer['id'] ?? '';
-			$product_id = $offer['productId'] ?? ( $offer['product_id'] ?? '' );
+			$offer_id = $offer['id'] ?? '';
 
-			if ( ! $product_id && isset( $offer_product_map[ $offer_id ] ) ) {
-				$product_id = $offer_product_map[ $offer_id ]['id'] ?? '';
-			}
-
-			$fg_product = null;
-			if ( $product_id ) {
-				$fg_product = self::get_product_cached( $client, $product_id, $product_cache );
-			}
-
-			if ( ! $fg_product && isset( $offer_product_map[ $offer_id ] ) ) {
-				$fg_product = $offer_product_map[ $offer_id ];
-			}
-
-			if ( $fg_product && ! self::is_product_one_time( $fg_product ) ) {
-				self::log( sprintf( 'Skipping offer %s — product type is not OneTimePayment.', substr( $offer_id, 0, 8 ) ) );
+			if ( ! empty( $offer_product_map ) && ! isset( $offer_product_map[ $offer_id ] ) ) {
+				self::log( sprintf( 'Skipping offer %s — not a OneTimePayment product.', substr( $offer_id, 0, 8 ) ) );
 				continue;
 			}
+
+			$fg_product = isset( $offer_product_map[ $offer_id ] ) ? $offer_product_map[ $offer_id ] : null;
 
 			$result = self::sync_from_offer( $offer, $fg_product );
 
@@ -99,14 +82,14 @@ class Fungies_Product_Sync {
 	private static function build_offer_product_map( $client ) {
 		$map = array();
 
-		$resp = $client->get_products();
+		$resp = $client->get( '/products/list?types[]=OneTimePayment' );
 		if ( is_wp_error( $resp ) ) {
-			self::log( 'Products fetch for name enrichment failed, names will fall back.', 'warning' );
+			self::log( 'OneTimePayment products fetch failed: ' . $resp->get_error_message(), 'warning' );
 			return $map;
 		}
 
 		$products = self::extract_list( $resp, 'products' );
-		self::log( 'Loaded ' . count( $products ) . ' products for name enrichment.' );
+		self::log( 'Found ' . count( $products ) . ' OneTimePayment products.' );
 
 		foreach ( $products as $product ) {
 			$pid = $product['id'] ?? '';
@@ -122,6 +105,8 @@ class Fungies_Product_Sync {
 			$full   = $detail['data']['product'] ?? $product;
 			$offers = $detail['data']['offers'] ?? array();
 
+			self::log( sprintf( 'Product "%s" has %d offers.', $full['name'] ?? '(no name)', count( $offers ) ) );
+
 			foreach ( $offers as $offer_ref ) {
 				$oid = $offer_ref['id'] ?? '';
 				if ( $oid ) {
@@ -130,62 +115,8 @@ class Fungies_Product_Sync {
 			}
 		}
 
-		self::log( 'Mapped ' . count( $map ) . ' offers to their parent products.' );
+		self::log( 'Mapped ' . count( $map ) . ' offers to OneTimePayment products.' );
 		return $map;
-	}
-
-	private static function get_product_cached( $client, $product_id, &$cache ) {
-		if ( isset( $cache[ $product_id ] ) ) {
-			return $cache[ $product_id ];
-		}
-
-		self::log( 'Fetching product details: ' . $product_id );
-		$response = $client->get_product( $product_id );
-
-		if ( is_wp_error( $response ) ) {
-			self::log( 'Product fetch failed for ' . $product_id . ': ' . $response->get_error_message(), 'warning' );
-			$cache[ $product_id ] = null;
-			return null;
-		}
-
-		$product = $response['data']['product'] ?? ( $response['product'] ?? null );
-		$cache[ $product_id ] = $product;
-
-		if ( $product ) {
-			self::log( 'Product loaded: ' . ( $product['name'] ?? '(no name)' ) );
-		}
-
-		return $product;
-	}
-
-	private static function filter_one_time_payment( $offers ) {
-		return array_filter( $offers, function ( $offer ) {
-			$types = $offer['product']['types'] ?? ( $offer['productTypes'] ?? array() );
-			if ( ! empty( $types ) && is_array( $types ) ) {
-				return in_array( 'OneTimePayment', $types, true );
-			}
-			if ( ! empty( $offer['recurringInterval'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['recurringIntervalCount'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['trialInterval'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['trialIntervalCount'] ) ) {
-				return false;
-			}
-			return true;
-		} );
-	}
-
-	private static function is_product_one_time( $product ) {
-		$types = $product['types'] ?? ( $product['productTypes'] ?? array() );
-		if ( empty( $types ) || ! is_array( $types ) ) {
-			return true;
-		}
-		return in_array( 'OneTimePayment', $types, true );
 	}
 
 	private static function extract_list( $response, $key ) {
