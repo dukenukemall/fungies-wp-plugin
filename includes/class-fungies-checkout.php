@@ -33,7 +33,7 @@ class Fungies_Checkout {
 				$wc_order->update_meta_data( '_fungies_order_id', $fungies_order_id );
 				$wc_order->save();
 				wc_get_logger()->info(
-					sprintf( '[Return] Linked Fungies order %s → WC order #%d', $fungies_order_id, $wc_order->get_id() ),
+					sprintf( '[Return] Linked Fungies order %s -> WC order #%d', $fungies_order_id, $wc_order->get_id() ),
 					array( 'source' => 'fungies' )
 				);
 			}
