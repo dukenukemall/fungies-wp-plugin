@@ -158,9 +158,12 @@ After a customer completes payment on Fungies, they need to be redirected back t
    ```
    https://yoursite.com/?wc-api=fungies_return
    ```
-4. In **URL Parameters**, add these system parameters:
-   - **`fngs-order-id`** — so Fungies appends the order ID to the redirect
-   - **`fngs-user-email`** — so Fungies appends the customer email to the redirect
+4. In **URL Parameters**, add these system parameters from the dropdown:
+   - **Order id** (appears as `fngs-order-id` in the URL)
+   - **User email** (appears as `fngs-user-email` in the URL)
+
+   > **Note:** The dropdown list shows human-readable names (e.g. "Order id", "User email"). Once selected, they are automatically converted to the correct URL parameters (`fngs-order-id`, `fngs-user-email`). The names in the dropdown may differ from the final parameter names -- this is expected.
+
 5. The final redirect URL will look like:
    ```
    https://yoursite.com/?wc-api=fungies_return&fngs-order-id={fngs-order-id}&fngs-user-email={fngs-user-email}
