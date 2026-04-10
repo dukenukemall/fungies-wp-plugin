@@ -48,7 +48,7 @@ class Fungies_Webhook_Handler {
 			self::mark_processed( $idempotency );
 		}
 
-		wp_schedule_single_event( time(), 'fungies_process_webhook', array( $payload ) );
+		self::process_event( $payload );
 
 		return new WP_REST_Response( array( 'status' => 'ok' ), 200 );
 	}
