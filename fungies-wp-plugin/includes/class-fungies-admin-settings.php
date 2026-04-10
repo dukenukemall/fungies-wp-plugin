@@ -46,18 +46,16 @@ class Fungies_Admin_Settings {
 				'type'     => 'password',
 				'css'      => 'min-width: 400px;',
 			),
-			array(
-				'title'    => __( 'Checkout Mode', 'fungies-wp' ),
-				'desc'     => __( 'How the Fungies checkout is presented to customers', 'fungies-wp' ),
-				'id'       => self::OPTION_PREFIX . 'checkout_mode',
-				'type'     => 'select',
-				'options'  => array(
-					'overlay'  => __( 'Overlay (popup)', 'fungies-wp' ),
-					'embedded' => __( 'Embedded (inline)', 'fungies-wp' ),
-					'hosted'   => __( 'Hosted (redirect)', 'fungies-wp' ),
-				),
-				'default'  => 'overlay',
+		array(
+			'title'    => __( 'Checkout Mode', 'fungies-wp' ),
+			'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
+			'id'       => self::OPTION_PREFIX . 'checkout_mode',
+			'type'     => 'select',
+			'options'  => array(
+				'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
 			),
+			'default'  => 'hosted',
+		),
 			array(
 				'title'    => __( 'Sandbox Mode', 'fungies-wp' ),
 				'desc'     => __( 'Enable sandbox/test mode', 'fungies-wp' ),

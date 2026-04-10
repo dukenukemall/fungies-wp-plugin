@@ -5,7 +5,7 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 
 	public function __construct() {
 		$this->id                 = 'fungies';
-		$this->icon               = '';
+		$this->icon               = FUNGIES_WP_PLUGIN_URL . 'assets/img/fungies-icon.png';
 		$this->has_fields         = false;
 		$this->method_title       = __( 'Fungies Checkout', 'fungies-wp' );
 		$this->method_description = __( 'Accept payments via Fungies — the merchant of record handles payments, taxes, and compliance.', 'fungies-wp' );
@@ -50,53 +50,48 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 
 		$order->update_status( 'pending', __( 'Awaiting Fungies payment.', 'fungies-wp' ) );
 
-		$checkout_mode = Fungies_Admin_Settings::get_option( 'checkout_mode', 'overlay' );
+		$redirect_url = self::build_hosted_checkout_url( $order );
 
-		if ( 'hosted' === $checkout_mode ) {
-			$redirect_url = self::build_hosted_checkout_url( $order );
-			return array(
-				'result'   => 'success',
-				'redirect' => $redirect_url,
-			);
-		}
+		wc_get_logger()->info(
+			sprintf( '[Gateway] Redirecting order #%d to Fungies hosted checkout: %s', $order_id, $redirect_url ),
+			array( 'source' => 'fungies' )
+		);
 
 		return array(
-			'result'       => 'success',
-			'redirect'     => '',
-			'fungies_mode' => $checkout_mode,
-			'order_id'     => $order_id,
+			'result'   => 'success',
+			'redirect' => $redirect_url,
 		);
 	}
 
 	private static function build_hosted_checkout_url( $order ) {
-		$items     = array();
 		$first_url = '';
 
 		foreach ( $order->get_items() as $item ) {
 			$product_id = $item->get_product_id();
-			$offer_id   = get_post_meta( $product_id, '_fungies_offer_id', true );
 
 			if ( ! $first_url ) {
 				$first_url = get_post_meta( $product_id, '_fungies_checkout_url', true );
 			}
-
-			if ( $offer_id ) {
-				$items[] = array(
-					'offerId'  => $offer_id,
-					'quantity' => $item->get_quantity(),
-				);
-			}
 		}
 
 		if ( ! $first_url ) {
+			wc_get_logger()->warning(
+				sprintf( '[Gateway] No Fungies checkout URL found for order #%d — falling back to thank-you page.', $order->get_id() ),
+				array( 'source' => 'fungies' )
+			);
 			return $order->get_checkout_order_received_url();
 		}
+
+		$success_url = $order->get_checkout_order_received_url();
+		$cancel_url  = wc_get_checkout_url();
 
 		$url = add_query_arg( array(
 			'prefill_email'      => $order->get_billing_email(),
 			'prefill_first_name' => $order->get_billing_first_name(),
 			'prefill_last_name'  => $order->get_billing_last_name(),
 			'custom_wc_order_id' => $order->get_id(),
+			'success_url'        => $success_url,
+			'cancel_url'         => $cancel_url,
 		), $first_url );
 
 		return $url;

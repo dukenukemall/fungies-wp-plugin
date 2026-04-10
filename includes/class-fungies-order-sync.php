@@ -51,18 +51,29 @@ class Fungies_Order_Sync {
 
 		$fungies_order_id = $ev['order']['id'] ?? '';
 		$wc_order_id      = self::extract_wc_order_id( $ev );
-		$wc_order         = $wc_order_id ? wc_get_order( $wc_order_id ) : null;
+
+		self::log( "payment_success — Fungies order: {$fungies_order_id}, extracted WC order ID: " . ( $wc_order_id ?: 'none' ) );
+
+		$wc_order = $wc_order_id ? wc_get_order( $wc_order_id ) : null;
 
 		if ( ! $wc_order ) {
+			self::log( 'Looking up WC order by _fungies_order_id meta...' );
 			$wc_order = self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
 		}
 
 		if ( ! $wc_order ) {
+			self::log( 'No existing WC order found — creating from webhook data.' );
 			$wc_order = self::create_order_from_webhook( $ev );
 		}
 
 		if ( ! $wc_order ) {
 			self::log( 'Could not create or find WC order for payment_success.', 'error' );
+			return;
+		}
+
+		$current_status = $wc_order->get_status();
+		if ( in_array( $current_status, array( 'completed', 'processing' ), true ) ) {
+			self::log( "Order #{$wc_order->get_id()} already {$current_status} — skipping duplicate payment_success." );
 			return;
 		}
 
@@ -181,21 +192,36 @@ class Fungies_Order_Sync {
 	}
 
 	private static function extract_wc_order_id( $ev ) {
+		$candidates = array( 'wc_order_id', 'custom_wc_order_id' );
+
 		foreach ( $ev['items'] as $item ) {
 			$cf = $item['customFields'] ?? ( $item['custom_fields'] ?? array() );
-			if ( isset( $cf['wc_order_id'] ) ) {
-				return (int) $cf['wc_order_id'];
+			foreach ( $candidates as $key ) {
+				if ( ! empty( $cf[ $key ] ) ) {
+					return (int) $cf[ $key ];
+				}
 			}
 		}
 
 		$custom = $ev['data']['customFields'] ?? ( $ev['data']['custom_fields'] ?? array() );
-		if ( isset( $custom['wc_order_id'] ) ) {
-			return (int) $custom['wc_order_id'];
+		foreach ( $candidates as $key ) {
+			if ( ! empty( $custom[ $key ] ) ) {
+				return (int) $custom[ $key ];
+			}
 		}
 
 		$metadata = $ev['data']['metadata'] ?? array();
-		if ( isset( $metadata['wc_order_id'] ) ) {
-			return (int) $metadata['wc_order_id'];
+		foreach ( $candidates as $key ) {
+			if ( ! empty( $metadata[ $key ] ) ) {
+				return (int) $metadata[ $key ];
+			}
+		}
+
+		$query_params = $ev['data']['queryParams'] ?? ( $ev['data']['query_params'] ?? array() );
+		foreach ( $candidates as $key ) {
+			if ( ! empty( $query_params[ $key ] ) ) {
+				return (int) $query_params[ $key ];
+			}
 		}
 
 		return null;
