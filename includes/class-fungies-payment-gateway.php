@@ -77,11 +77,8 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 		$country = $order->get_billing_country();
 
 		$url = add_query_arg( array(
-			'fngs-user-email'      => $order->get_billing_email(),
+			'fngs-user-email'       => $order->get_billing_email(),
 			'fngs-customer-country' => $country ? $country : '',
-			'custom_wc_order_id'   => $order->get_id(),
-			'success_url'          => $order->get_checkout_order_received_url(),
-			'cancel_url'           => wc_get_checkout_url(),
 		), $checkout_url );
 
 		return $url;

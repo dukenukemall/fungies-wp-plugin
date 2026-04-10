@@ -129,6 +129,7 @@ class Fungies_Admin_Settings {
 		woocommerce_admin_fields( self::get_settings() );
 
 		$webhook_url = rest_url( 'fungies/v1/webhook' );
+		$return_url  = Fungies_Checkout::get_return_url();
 		?>
 		<h2><?php esc_html_e( 'Connection & Sync', 'fungies-wp' ); ?></h2>
 		<table class="form-table">
@@ -145,7 +146,23 @@ class Fungies_Admin_Settings {
 				<td>
 					<code><?php echo esc_url( $webhook_url ); ?></code>
 					<p class="description">
-						<?php esc_html_e( 'Paste this URL into your Fungies dashboard webhook settings.', 'fungies-wp' ); ?>
+						<?php esc_html_e( 'Paste this URL into Fungies Dashboard → Developers → Webhooks.', 'fungies-wp' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Post-Purchase Redirect URL', 'fungies-wp' ); ?></th>
+				<td>
+					<code><?php echo esc_url( $return_url ); ?></code>
+					<p class="description">
+						<?php
+						printf(
+							wp_kses(
+								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameter <code>fngs-order-id</code> so Fungies appends the order ID to the redirect.', 'fungies-wp' ),
+								array( 'strong' => array(), 'br' => array(), 'code' => array() )
+							)
+						);
+						?>
 					</p>
 				</td>
 			</tr>
