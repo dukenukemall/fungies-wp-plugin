@@ -46,7 +46,7 @@ Fungies acts as your **Merchant of Record** — handling payments, taxes, and co
 |---------|-------------|
 | API Key Management | Production + Staging keys in WC Settings |
 | Sandbox / Staging Mode | Routes to `api.stage.fungies.net` |
-| Product Sync | Fungies offers → WooCommerce products |
+| Product Sync | OneTimePayment offers → WooCommerce products (other product types like Digital Downloads, Subscriptions are excluded) |
 | Hosted Checkout | Redirect to Fungies checkout page |
 | Webhook Integration | Real-time order sync |
 | Order Creation | Auto from payment webhooks |
@@ -60,7 +60,7 @@ Fungies acts as your **Merchant of Record** — handling payments, taxes, and co
 ## How It Works
 
 1. **Configure** — Paste your Fungies API keys and Store URL in WooCommerce → Settings → Fungies
-2. **Sync Products** — Click "Sync Now" or let the hourly cron pull products automatically
+2. **Sync Products** — Click "Sync Now" or let the hourly cron pull OneTimePayment products automatically
 3. **Customer Shops** — Customers browse your WC store and proceed to checkout
 4. **Fungies Checkout** — Customer is redirected to Fungies hosted checkout to pay
 5. **Payment Complete** — Fungies redirects customer back to your WooCommerce thank-you page
@@ -277,6 +277,9 @@ A: You need to configure the **Instant Redirect URL** in Fungies Dashboard → S
 
 **Q: Can I use this alongside other WC payment gateways?**
 A: Yes. Fungies registers as a standard WC payment gateway. Customers can choose it at checkout alongside any other enabled gateways.
+
+**Q: Which Fungies products are synced?**
+A: Only **OneTimePayment** products and their offers are synced. Other product types (Digital Downloads, Subscriptions, Game Keys, etc.) are not imported. The product name and description from Fungies are used for the WooCommerce product listing.
 
 **Q: How often do products sync automatically?**
 A: Every hour via WP Cron. You can also trigger a manual sync anytime from the settings page.
