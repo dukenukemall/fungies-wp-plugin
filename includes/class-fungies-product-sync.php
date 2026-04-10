@@ -27,45 +27,66 @@ class Fungies_Product_Sync {
 	public static function sync() {
 		$client = new Fungies_API_Client();
 
-		$offers_response = $client->get_offers( array( 'product.types' => 'OneTimePayment' ) );
-		if ( is_wp_error( $offers_response ) ) {
-			self::log( 'Offers fetch failed: ' . $offers_response->get_error_message(), 'error' );
-			return $offers_response;
+		$products_response = $client->get( '/products/list', array( 'types[]' => 'OneTimePayment' ) );
+		if ( is_wp_error( $products_response ) ) {
+			self::log( 'Products fetch failed: ' . $products_response->get_error_message(), 'error' );
+			return $products_response;
 		}
 
-		$offers_list = self::extract_list( $offers_response, 'offers' );
-		self::log( 'Fetched ' . count( $offers_list ) . ' offers from API.' );
+		$products = self::extract_list( $products_response, 'products' );
+		self::log( 'Fetched ' . count( $products ) . ' OneTimePayment products from API.' );
 
-		$offers_list = self::filter_one_time_payment( $offers_list );
-		self::log( count( $offers_list ) . ' OneTimePayment offers after filter.' );
-
-		$product_cache = array();
 		$synced  = 0;
 		$created = 0;
 		$updated = 0;
 
-		foreach ( $offers_list as $offer ) {
-			$offer_id   = $offer['id'] ?? '';
-			$product_id = $offer['productId'] ?? ( $offer['product_id'] ?? '' );
-			$fg_product = null;
-
-			if ( $product_id ) {
-				$fg_product = self::get_product_cached( $client, $product_id, $product_cache );
-			}
-
-			if ( $fg_product && ! self::is_product_one_time( $fg_product ) ) {
-				self::log( sprintf( 'Skipping offer %s — product type is not OneTimePayment.', substr( $offer_id, 0, 8 ) ) );
+		foreach ( $products as $fg_product ) {
+			$product_id = $fg_product['id'] ?? '';
+			if ( ! $product_id ) {
 				continue;
 			}
 
-			$result = self::sync_from_offer( $offer, $fg_product );
-
-			if ( 'created' === $result ) {
-				$created++;
-			} elseif ( 'updated' === $result ) {
-				$updated++;
+			$detail_resp = $client->get_product( $product_id );
+			if ( is_wp_error( $detail_resp ) ) {
+				self::log( 'Product detail fetch failed: ' . $product_id, 'warning' );
+				continue;
 			}
-			$synced++;
+
+			$full_product = $detail_resp['data']['product'] ?? $fg_product;
+			$offer_refs   = $detail_resp['data']['offers'] ?? array();
+
+			self::log( sprintf(
+				'Product "%s" has %d offers.',
+				$full_product['name'] ?? '(no name)',
+				count( $offer_refs )
+			) );
+
+			foreach ( $offer_refs as $offer_ref ) {
+				$offer_id = $offer_ref['id'] ?? '';
+				if ( ! $offer_id ) {
+					continue;
+				}
+
+				$offer_resp = $client->get_offer( $offer_id );
+				if ( is_wp_error( $offer_resp ) ) {
+					self::log( 'Offer fetch failed: ' . substr( $offer_id, 0, 8 ), 'warning' );
+					continue;
+				}
+
+				$offer = $offer_resp['data']['offer'] ?? ( $offer_resp['offer'] ?? $offer_resp );
+				if ( ! self::is_offer_one_time( $offer ) ) {
+					self::log( sprintf( 'Skipping subscription offer %s.', substr( $offer_id, 0, 8 ) ) );
+					continue;
+				}
+
+				$result = self::sync_from_offer( $offer, $full_product );
+				if ( 'created' === $result ) {
+					$created++;
+				} elseif ( 'updated' === $result ) {
+					$updated++;
+				}
+				$synced++;
+			}
 		}
 
 		update_option( 'fungies_last_sync', current_time( 'mysql' ) );
@@ -86,58 +107,20 @@ class Fungies_Product_Sync {
 		);
 	}
 
-	private static function get_product_cached( $client, $product_id, &$cache ) {
-		if ( isset( $cache[ $product_id ] ) ) {
-			return $cache[ $product_id ];
+	private static function is_offer_one_time( $offer ) {
+		if ( ! empty( $offer['recurringInterval'] ) ) {
+			return false;
 		}
-
-		self::log( 'Fetching product details: ' . $product_id );
-		$response = $client->get_product( $product_id );
-
-		if ( is_wp_error( $response ) ) {
-			self::log( 'Product fetch failed for ' . $product_id . ': ' . $response->get_error_message(), 'warning' );
-			$cache[ $product_id ] = null;
-			return null;
+		if ( ! empty( $offer['recurringIntervalCount'] ) ) {
+			return false;
 		}
-
-		$product = $response['data']['product'] ?? ( $response['product'] ?? null );
-		$cache[ $product_id ] = $product;
-
-		if ( $product ) {
-			self::log( 'Product loaded: ' . ( $product['name'] ?? '(no name)' ) );
+		if ( ! empty( $offer['trialInterval'] ) ) {
+			return false;
 		}
-
-		return $product;
-	}
-
-	private static function filter_one_time_payment( $offers ) {
-		return array_filter( $offers, function ( $offer ) {
-			$types = $offer['product']['types'] ?? ( $offer['productTypes'] ?? array() );
-			if ( ! empty( $types ) && is_array( $types ) ) {
-				return in_array( 'OneTimePayment', $types, true );
-			}
-			if ( ! empty( $offer['recurringInterval'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['recurringIntervalCount'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['trialInterval'] ) ) {
-				return false;
-			}
-			if ( ! empty( $offer['trialIntervalCount'] ) ) {
-				return false;
-			}
-			return true;
-		} );
-	}
-
-	private static function is_product_one_time( $product ) {
-		$types = $product['types'] ?? ( $product['productTypes'] ?? array() );
-		if ( empty( $types ) || ! is_array( $types ) ) {
-			return true;
+		if ( ! empty( $offer['trialIntervalCount'] ) ) {
+			return false;
 		}
-		return in_array( 'OneTimePayment', $types, true );
+		return true;
 	}
 
 	private static function extract_list( $response, $key ) {
@@ -158,13 +141,20 @@ class Fungies_Product_Sync {
 		$existing  = self::find_wc_product_by_offer_id( $offer_id );
 		$is_update = (bool) $existing;
 
-		$name = ! empty( $fg_product['name'] )
-			? $fg_product['name']
-			: ( $offer['name'] ?? ( 'Fungies Offer ' . substr( $offer_id, 0, 8 ) ) );
+		$product_name = $fg_product['name'] ?? '';
+		$offer_name   = $offer['name'] ?? '';
 
-		$desc = ! empty( $fg_product['description'] )
-			? $fg_product['description']
-			: ( $offer['description'] ?? '' );
+		if ( ! empty( $offer_name ) ) {
+			$name = $offer_name;
+		} elseif ( ! empty( $product_name ) ) {
+			$name = $product_name;
+		} else {
+			$name = 'Fungies Offer ' . substr( $offer_id, 0, 8 );
+		}
+
+		$offer_desc   = $offer['description'] ?? '';
+		$product_desc = $fg_product['description'] ?? '';
+		$desc = ! empty( $offer_desc ) ? $offer_desc : $product_desc;
 
 		$product_data = array(
 			'post_title'   => $name,

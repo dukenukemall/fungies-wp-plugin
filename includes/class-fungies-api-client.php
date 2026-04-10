@@ -100,6 +100,10 @@ class Fungies_API_Client {
 		return $this->get( '/offers/list', $query );
 	}
 
+	public function get_offer( $id ) {
+		return $this->get( '/offers/' . $id );
+	}
+
 	public function get_orders() {
 		return $this->get( '/orders/list' );
 	}
