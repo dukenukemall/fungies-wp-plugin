@@ -103,16 +103,24 @@ class Fungies_Admin_Settings {
 				'type'  => 'title',
 				'id'    => 'fungies_checkout_settings',
 			),
-		array(
-			'title'    => __( 'Checkout Mode', 'fungies-wp' ),
-			'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
-			'id'       => self::OPTION_PREFIX . 'checkout_mode',
-			'type'     => 'select',
-			'options'  => array(
-				'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
+			array(
+				'title'    => __( 'Checkout Mode', 'fungies-wp' ),
+				'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'checkout_mode',
+				'type'     => 'select',
+				'options'  => array(
+					'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
+				),
+				'default'  => 'hosted',
 			),
-			'default'  => 'hosted',
-		),
+			array(
+				'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
+				'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
+				'id'          => self::OPTION_PREFIX . 'store_url',
+				'type'        => 'text',
+				'css'         => 'min-width: 400px;',
+				'placeholder' => 'https://yourname.app.fungies.io',
+			),
 			array( 'type' => 'sectionend', 'id' => 'fungies_checkout_settings' ),
 		);
 	}

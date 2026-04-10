@@ -56,6 +56,14 @@ class Fungies_Admin_Settings {
 			),
 			'default'  => 'hosted',
 		),
+		array(
+			'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
+			'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
+			'id'          => self::OPTION_PREFIX . 'store_url',
+			'type'        => 'text',
+			'css'         => 'min-width: 400px;',
+			'placeholder' => 'https://yourname.app.fungies.io',
+		),
 			array(
 				'title'    => __( 'Sandbox Mode', 'fungies-wp' ),
 				'desc'     => __( 'Enable sandbox/test mode', 'fungies-wp' ),
