@@ -53,6 +53,11 @@ class Fungies_Product_Sync {
 				$fg_product = self::get_product_cached( $client, $product_id, $product_cache );
 			}
 
+			if ( $fg_product && ! self::is_product_one_time( $fg_product ) ) {
+				self::log( sprintf( 'Skipping offer %s — product type is not OneTimePayment.', substr( $offer_id, 0, 8 ) ) );
+				continue;
+			}
+
 			$result = self::sync_from_offer( $offer, $fg_product );
 
 			if ( 'created' === $result ) {
@@ -111,10 +116,28 @@ class Fungies_Product_Sync {
 			if ( ! empty( $types ) && is_array( $types ) ) {
 				return in_array( 'OneTimePayment', $types, true );
 			}
-			$recurring = $offer['recurringIntervalCount'] ?? null;
-			$trial     = $offer['trialInterval'] ?? null;
-			return empty( $recurring ) && empty( $trial );
+			if ( ! empty( $offer['recurringInterval'] ) ) {
+				return false;
+			}
+			if ( ! empty( $offer['recurringIntervalCount'] ) ) {
+				return false;
+			}
+			if ( ! empty( $offer['trialInterval'] ) ) {
+				return false;
+			}
+			if ( ! empty( $offer['trialIntervalCount'] ) ) {
+				return false;
+			}
+			return true;
 		} );
+	}
+
+	private static function is_product_one_time( $product ) {
+		$types = $product['types'] ?? ( $product['productTypes'] ?? array() );
+		if ( empty( $types ) || ! is_array( $types ) ) {
+			return true;
+		}
+		return in_array( 'OneTimePayment', $types, true );
 	}
 
 	private static function extract_list( $response, $key ) {
