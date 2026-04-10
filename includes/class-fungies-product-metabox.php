@@ -23,19 +23,28 @@ class Fungies_Product_Metabox {
 		$offer_id     = get_post_meta( $post->ID, '_fungies_offer_id', true );
 		$checkout_url = get_post_meta( $post->ID, '_fungies_checkout_url', true );
 		$currency     = get_post_meta( $post->ID, '_fungies_currency', true );
+		$product_type = get_post_meta( $post->ID, '_fungies_product_type', true );
 
-		if ( ! $product_id ) {
+		if ( ! $offer_id && ! $product_id ) {
 			echo '<p>' . esc_html__( 'This product is not linked to Fungies.', 'fungies-wp' ) . '</p>';
 			return;
 		}
 
 		echo '<table class="widefat striped"><tbody>';
-		echo '<tr><th>' . esc_html__( 'Product ID', 'fungies-wp' ) . '</th>';
-		echo '<td><code>' . esc_html( $product_id ) . '</code></td></tr>';
 
 		if ( $offer_id ) {
 			echo '<tr><th>' . esc_html__( 'Offer ID', 'fungies-wp' ) . '</th>';
-			echo '<td><code>' . esc_html( $offer_id ) . '</code></td></tr>';
+			echo '<td><code style="font-size:11px;word-break:break-all">' . esc_html( $offer_id ) . '</code></td></tr>';
+		}
+
+		if ( $product_id ) {
+			echo '<tr><th>' . esc_html__( 'Product ID', 'fungies-wp' ) . '</th>';
+			echo '<td><code style="font-size:11px;word-break:break-all">' . esc_html( $product_id ) . '</code></td></tr>';
+		}
+
+		if ( $product_type ) {
+			echo '<tr><th>' . esc_html__( 'Type', 'fungies-wp' ) . '</th>';
+			echo '<td>' . esc_html( $product_type ) . '</td></tr>';
 		}
 
 		if ( $currency ) {
