@@ -57,8 +57,8 @@ class Fungies_Webhook_Handler {
 		$secret = Fungies_Admin_Settings::get_active_webhook_secret();
 
 		if ( empty( $secret ) ) {
-			self::log( 'No webhook secret configured — skipping verification.', 'warning' );
-			return true;
+			self::log( 'Webhook rejected: no webhook secret configured. Add your secret in WooCommerce → Settings → Fungies.', 'error' );
+			return false;
 		}
 
 		if ( empty( $signature ) ) {

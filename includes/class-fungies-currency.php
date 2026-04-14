@@ -23,7 +23,8 @@ class Fungies_Currency {
 		}
 
 		$symbols = self::get_currency_symbols();
-		$symbol  = $symbols[ strtoupper( $currency_code ) ] ?? strtoupper( $currency_code ) . ' ';
+		$code    = strtoupper( sanitize_text_field( $currency_code ) );
+		$symbol  = $symbols[ $code ] ?? esc_html( $code ) . ' ';
 
 		return $symbol . number_format( (float) $amount, 2, '.', ',' );
 	}

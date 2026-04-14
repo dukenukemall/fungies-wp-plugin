@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -158,6 +158,11 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.0.3 =
+* Security: Webhook handler now rejects requests when webhook secret is not configured
+* Security: Escape and sanitize currency code in storefront price output
+* Security: Use esc_html(esc_url()) for non-href URL display in admin settings
+
 = 2.0.2 =
 * Added third-party service disclosure for WordPress.org guideline compliance
 * Fixed admin notice to use modern WordPress notice pattern
@@ -188,6 +193,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 * Sandbox mode support
 
 == Upgrade Notice ==
+
+= 2.0.3 =
+Security hardening: webhook signature enforcement, escaping fixes.
 
 = 2.0.2 =
 WordPress.org guideline compliance: third-party service disclosure, admin notice fix, cleanup.

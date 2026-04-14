@@ -144,7 +144,7 @@ class Fungies_Admin_Settings {
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Webhook URL', 'fungies-wp' ); ?></th>
 				<td>
-					<code><?php echo esc_url( $webhook_url ); ?></code>
+					<code><?php echo esc_html( esc_url( $webhook_url ) ); ?></code>
 					<p class="description">
 						<?php esc_html_e( 'Paste this URL into Fungies Dashboard → Developers → Webhooks.', 'fungies-wp' ); ?>
 					</p>
@@ -153,7 +153,7 @@ class Fungies_Admin_Settings {
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Post-Purchase Redirect URL', 'fungies-wp' ); ?></th>
 				<td>
-					<code><?php echo esc_url( $return_url ); ?></code>
+					<code><?php echo esc_html( esc_url( $return_url ) ); ?></code>
 					<p class="description">
 						<?php
 						printf(
