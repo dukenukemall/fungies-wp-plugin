@@ -3,7 +3,7 @@
  * Plugin Name: Fungies for WooCommerce
  * Plugin URI: https://github.com/dukenukemall/fungies-wp-plugin
  * Description: Connect your WooCommerce store to Fungies.io — sync products, use Fungies checkout, and keep orders in sync.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author: Fungies
  * Author URI: https://fungies.io
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'FUNGIES_WP_VERSION', '2.0.1' );
+define( 'FUNGIES_WP_VERSION', '2.0.2' );
 define( 'FUNGIES_WP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'FUNGIES_WP_PLUGIN_FILE', __FILE__ );
@@ -55,7 +55,7 @@ add_action( 'before_woocommerce_init', function () {
 function fungies_wp_init() {
 	if ( ! class_exists( 'WooCommerce' ) ) {
 		add_action( 'admin_notices', function () {
-			echo '<div class="error"><p>';
+			echo '<div class="notice notice-error"><p>';
 			esc_html_e( 'Fungies for WooCommerce requires WooCommerce to be installed and active.', 'fungies-wp' );
 			echo '</p></div>';
 		} );
