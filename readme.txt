@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.0.3
+Stable tag: 2.1.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -29,7 +29,12 @@ You keep full control of your storefront. Fungies takes care of the hard parts �
 
 = Features =
 
-* **Automatic Product Sync** — OneTimePayment products from Fungies are synced into WooCommerce on an hourly schedule, or manually with one click
+* **Two-Way Product Sync** — Pull OneTimePayment products from Fungies into WooCommerce AND push WooCommerce products to Fungies as OneTimePayment offers (name, description, price, featured image)
+* **Auto-Sync on Product Save** — Editing a WooCommerce product automatically updates the matching offer in Fungies
+* **Currency Validation** — Detects your Fungies workspace currency and warns if it differs from your WooCommerce store currency
+* **Multi-Item Hosted Checkout** — Carts with multiple products create a Fungies Checkout Element so all line items appear on the hosted checkout page
+* **Detailed Sync Panel** — Clear summary under "Sync Now" showing pull/push counts and per-product errors
+* **Duplicate Protection** — Products pushed from WooCommerce to Fungies will not be re-imported as duplicates on the next pull
 * **Hosted Checkout** — Customers are redirected to a secure Fungies checkout page to complete payment, then returned to your WooCommerce thank-you page
 * **Real-Time Order Sync** — Webhooks keep WooCommerce orders in sync with Fungies payments, including completions, failures, and refunds
 * **Subscription Support** — Handles subscription creation, renewal, and cancellation events from Fungies
@@ -79,6 +84,69 @@ This plugin connects your WooCommerce store to the **Fungies.io** platform, an e
 * [SaaS Terms of Use](https://help.fungies.io/legal/saas-terms-of-use)
 * [Privacy Policy](https://help.fungies.io/legal/privacy-policy)
 * [Cookies and Tracking](https://help.fungies.io/legal/cookies-and-tracking)
+
+== Product Sync ==
+
+Every sync runs two phases on the same triggers:
+
+* **Pull (Fungies to WooCommerce)** — `GET /v0/offers/list`, then for each offer create or update a matching WooCommerce product (name, description, image, price, currency).
+* **Push (WooCommerce to Fungies)** — for each published WooCommerce product, build a OneTimePayment product and offer body, then either `PATCH` an existing one or `POST` a new one.
+
+= Triggers =
+
+* **Sync Now button** in WooCommerce → Settings → Fungies
+* **WP-Cron**, hourly
+* **`woocommerce_update_product` / `woocommerce_new_product`** hooks (push only, debounced 5 seconds)
+
+= Loop and duplicate prevention =
+
+* `_fungies_offer_id` on a WooCommerce product marks it as Fungies-originated → skipped during push.
+* `_fungies_pushed_offer_id` on a WooCommerce product marks it as already-pushed → skipped during pull.
+* A runtime `is_pulling` flag prevents WooCommerce update hooks from firing while the pull writes to the database.
+* A 5-second per-product transient lock debounces rapid-fire saves.
+* If a `PATCH` returns 404 "Product not found" (e.g. after switching from staging to production keys), stale IDs are cleared and the product is recreated in the current workspace.
+
+= Currency handling =
+
+The plugin auto-detects the Fungies workspace currency. If your WooCommerce currency does not match, the push phase errors out with a clear message — products are never pushed at the wrong currency.
+
+= Meta keys reference =
+
+* `_fungies_offer_id` — Fungies offer ID this WooCommerce product mirrors (set on pull).
+* `_fungies_currency` — currency the offer was priced in (set on pull).
+* `_fungies_checkout_url` — pre-built single-offer hosted checkout URL (set on pull).
+* `_fungies_pushed_product_id` — Fungies product ID for a WC-originated product (set on push).
+* `_fungies_pushed_offer_id` — Fungies offer ID for a WC-originated product (set on push).
+* `_fungies_pushed_at` — timestamp of last successful push.
+
+== Checkout URL Generation ==
+
+When a customer clicks **Place Order**, the plugin produces a different Fungies hosted checkout URL depending on how many distinct offers are in the cart.
+
+= Step 1 — Collect offer IDs =
+
+For each cart line item, the builder resolves a Fungies offer ID by checking, in order:
+
+1. `_fungies_offer_id` (product was pulled **from** Fungies).
+2. `_fungies_pushed_offer_id` (product was pushed **to** Fungies from WooCommerce).
+
+Each unit (quantity) becomes one entry in the resulting offer-IDs array. Items without either meta key are logged and skipped.
+
+= Step 2 — Build the URL =
+
+**Single offer** (1 distinct offer ID, quantity 1) — no API call is needed. The plugin redirects directly to:
+
+`<store_url>/checkout/<offer_id>?fngs-user-email=...&fngs-customer-country=...`
+
+**Multiple offers** (2 or more, or quantity > 1) — the plugin calls `POST /v0/elements/checkout/create` with all collected offer IDs, then redirects to:
+
+`<store_url>/checkout-element/<element_id>?fngs-user-email=...&fngs-customer-country=...`
+
+The element ID is also stored on the WooCommerce order as `_fungies_checkout_element_id` for traceability. When the customer lands on the hosted checkout, Fungies promotes the element into a checkout session and the URL becomes `…/checkout-element/<element_id>/checkout/<session_id>` — every cart product is visible in the order summary.
+
+= Why two URL shapes? =
+
+The single-offer URL is stateless — no API call, no rate-limit cost, no extra latency. The multi-offer flow has to use the Checkout Element endpoint because Fungies' single-offer URL only carries one offer ID. Before v2.1.6, multi-item carts would silently lose every line item except the first.
 
 == Installation ==
 
@@ -159,6 +227,45 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.1.7 =
+* Fixed: Push to Fungies now recovers from "Product not found" errors (e.g. after switching from staging to production API keys). Stale Fungies product/offer IDs are cleared and the product is recreated in the current workspace.
+* Fixed: When a pushed offer is missing in the current workspace but the product still exists, the offer is recreated under the existing product instead of erroring out.
+* Refactor: Extracted product/offer body builders into `Fungies_Product_Body` to keep the push class focused.
+
+= 2.1.6 =
+* Fixed: Multi-item carts now create a Fungies Checkout Element so all line items appear on the hosted checkout page (previously only the first item was sent)
+* Fixed: Products pushed from WooCommerce to Fungies (`_fungies_pushed_offer_id`) are now resolved at checkout — they were silently skipped before
+* Added: New `POST /v0/elements/checkout/create` integration in the API client
+* Added: WC order metadata `_fungies_checkout_element_id` for traceability of multi-item checkouts
+* Refactor: Extracted hosted checkout URL building into `Fungies_Checkout_URL_Builder`
+
+= 2.1.5 =
+* Fixed: Duplicate WooCommerce products created when pulling offers we previously pushed from WooCommerce
+* Added: One-time cleanup that removes existing duplicate WC products on the next sync
+* Added: Pull phase now skips offers with a `_fungies_pushed_offer_id` to prevent re-import
+
+= 2.1.4 =
+* Fixed: HTTP 400 "Invalid input" on Fungies product/offer PATCH — the `id` field is now included in the PATCH request body in addition to the URL path
+* Improved: Verbose request body logging in the API client for easier troubleshooting
+
+= 2.1.3 =
+* Fixed: HTTP 500 on `POST /v0/products/create` by sending the required `status: ACTIVE` field
+* Fixed: Offer prices are now sent in major currency units (no more accidental ×100 multiplication)
+
+= 2.1.2 =
+* Fixed: Plugin zip path separators (forward slashes) for Linux-based WordPress hosts
+* Fixed: Versioned top-level folder inside the zip to avoid "destination folder already exists" errors
+
+= 2.1.1 =
+* Fixed: Fatal error on plugin install on some Linux hosts caused by Windows-style path separators in the zip
+
+= 2.1.0 =
+* Added: Two-way product sync — push WooCommerce products to Fungies as OneTimePayment offers (name, description, price, featured image)
+* Added: Auto-push to Fungies when a WooCommerce product is saved/updated
+* Added: Currency auto-detection of the Fungies workspace currency with mismatch validation
+* Added: Detailed sync result panel under the "Sync Now" button (pull/push summaries + collapsible error list)
+* Added: Loop guard so editing a Fungies-imported product in WooCommerce does not push back to Fungies
+
 = 2.0.3 =
 * Security: Webhook handler now rejects requests when webhook secret is not configured
 * Security: Escape and sanitize currency code in storefront price output
@@ -194,6 +301,24 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 * Sandbox mode support
 
 == Upgrade Notice ==
+
+= 2.1.7 =
+Fixes "Product not found" errors when pushing to a different Fungies workspace (e.g. switching staging → production). Recommended update.
+
+= 2.1.6 =
+Fixes multi-item Fungies hosted checkout — all cart products are now sent to Fungies. Recommended update.
+
+= 2.1.5 =
+Fixes duplicate WooCommerce products that appeared on sync. Recommended update.
+
+= 2.1.4 =
+Fixes Fungies product/offer update errors (HTTP 400 Invalid input).
+
+= 2.1.3 =
+Fixes Fungies product creation errors and price unit handling.
+
+= 2.1.0 =
+Adds two-way product sync — WooCommerce products are pushed to Fungies. Make sure your WooCommerce currency matches your Fungies workspace currency before syncing.
 
 = 2.0.3 =
 Security hardening: webhook signature enforcement, escaping fixes.

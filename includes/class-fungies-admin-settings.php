@@ -182,12 +182,30 @@ class Fungies_Admin_Settings {
 						<?php esc_html_e( 'Sync Now', 'fungies-wp' ); ?>
 					</button>
 					<span id="fungies-sync-result" style="margin-left:10px;"></span>
+					<div id="fungies-sync-result-panel" class="fungies-sync-panel" hidden>
+						<div class="fungies-sync-summary">
+							<p class="fungies-sync-row fungies-sync-pull">
+								<span class="fungies-sync-label"><?php esc_html_e( 'Pull from Fungies:', 'fungies-wp' ); ?></span>
+								<strong class="fungies-sync-pull-text">—</strong>
+							</p>
+							<p class="fungies-sync-row fungies-sync-push">
+								<span class="fungies-sync-label"><?php esc_html_e( 'Push to Fungies:', 'fungies-wp' ); ?></span>
+								<strong class="fungies-sync-push-text">—</strong>
+							</p>
+						</div>
+						<details class="fungies-sync-errors" hidden>
+							<summary class="fungies-sync-errors-summary"></summary>
+							<ul class="fungies-sync-errors-list"></ul>
+						</details>
+					</div>
 					<?php
 					$last_sync = get_option( 'fungies_last_sync', '' );
 					if ( $last_sync ) {
-						echo '<p class="description">';
+						echo '<p class="description" id="fungies-last-sync">';
 						printf( esc_html__( 'Last sync: %s', 'fungies-wp' ), esc_html( $last_sync ) );
 						echo '</p>';
+					} else {
+						echo '<p class="description" id="fungies-last-sync" hidden></p>';
 					}
 					?>
 				</td>

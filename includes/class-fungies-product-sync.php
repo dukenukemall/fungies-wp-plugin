@@ -3,9 +3,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Fungies_Product_Sync {
 
+	private static $is_pulling = false;
+
 	public static function init() {
 		add_action( 'wp_ajax_fungies_sync_products', array( __CLASS__, 'ajax_sync' ) );
 		add_action( 'fungies_product_sync_cron', array( __CLASS__, 'sync' ) );
+		add_action( 'woocommerce_update_product', array( __CLASS__, 'on_wc_product_saved' ), 20, 1 );
+		add_action( 'woocommerce_new_product', array( __CLASS__, 'on_wc_product_saved' ), 20, 1 );
 	}
 
 	public static function ajax_sync() {
@@ -14,6 +18,8 @@ class Fungies_Product_Sync {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( __( 'Permission denied.', 'fungies-wp' ) );
 		}
+
+		delete_transient( 'fungies_workspace_currency' );
 
 		$result = self::sync();
 
@@ -27,95 +33,200 @@ class Fungies_Product_Sync {
 	public static function sync() {
 		$client = new Fungies_API_Client();
 
+		$pull = self::pull_from_fungies( $client );
+		if ( is_wp_error( $pull ) ) {
+			return $pull;
+		}
+
+		$push = self::push_to_fungies( $client );
+
+		$pull_synced = ( $pull['created'] ?? 0 ) + ( $pull['updated'] ?? 0 );
+		$push_synced = ( $push['created'] ?? 0 ) + ( $push['updated'] ?? 0 );
+		$err_count   = count( $push['errors'] ?? array() );
+
+		$message = sprintf(
+			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors).', 'fungies-wp' ),
+			$pull_synced, $pull['created'], $pull['updated'],
+			$push_synced, $push['created'], $push['updated'], $err_count
+		);
+
+		update_option( 'fungies_last_sync', current_time( 'mysql' ) );
+		update_option( 'fungies_product_count', $pull_synced );
+
+		self::log( $message );
+
+		return array(
+			'pull'    => $pull,
+			'push'    => $push,
+			'message' => $message,
+		);
+	}
+
+	public static function pull_from_fungies( $client ) {
+		self::$is_pulling = true;
+
+		self::cleanup_pushed_duplicates();
+
 		$offers_response = $client->get_offers( array( 'product.types' => 'OneTimePayment' ) );
 		if ( is_wp_error( $offers_response ) ) {
+			self::$is_pulling = false;
 			self::log( 'Offers fetch failed: ' . $offers_response->get_error_message(), 'error' );
 			return $offers_response;
 		}
 
-		$offers_list = self::extract_list( $offers_response, 'offers' );
-		self::log( 'Fetched ' . count( $offers_list ) . ' offers from API.' );
-
+		$offers_list       = self::extract_list( $offers_response, 'offers' );
 		$offer_product_map = self::build_offer_product_map( $client );
-		$synced  = 0;
+		$pushed_offer_ids  = self::get_pushed_offer_ids();
 		$created = 0;
 		$updated = 0;
 
 		foreach ( $offers_list as $offer ) {
 			$offer_id = $offer['id'] ?? '';
-
 			if ( ! empty( $offer_product_map ) && ! isset( $offer_product_map[ $offer_id ] ) ) {
-				self::log( sprintf( 'Skipping offer %s — not a OneTimePayment product.', substr( $offer_id, 0, 8 ) ) );
 				continue;
 			}
-
-			$fg_product = isset( $offer_product_map[ $offer_id ] ) ? $offer_product_map[ $offer_id ] : null;
-
-			$result = self::sync_from_offer( $offer, $fg_product );
-
-			if ( 'created' === $result ) {
-				$created++;
-			} elseif ( 'updated' === $result ) {
-				$updated++;
+			if ( $offer_id && isset( $pushed_offer_ids[ $offer_id ] ) ) {
+				continue;
 			}
-			$synced++;
+			$fg_product = isset( $offer_product_map[ $offer_id ] ) ? $offer_product_map[ $offer_id ] : null;
+			$result     = self::sync_from_offer( $offer, $fg_product );
+			if ( 'created' === $result ) $created++;
+			elseif ( 'updated' === $result ) $updated++;
 		}
 
-		update_option( 'fungies_last_sync', current_time( 'mysql' ) );
-		update_option( 'fungies_product_count', $synced );
+		self::$is_pulling = false;
 
-		$summary = sprintf(
-			__( 'Synced %d OneTimePayment offers (%d created, %d updated).', 'fungies-wp' ),
-			$synced, $created, $updated
+		return array( 'created' => $created, 'updated' => $updated );
+	}
+
+	private static function get_pushed_offer_ids() {
+		global $wpdb;
+		$rows = $wpdb->get_col(
+			"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_fungies_pushed_offer_id' AND meta_value <> ''"
 		);
+		return array_flip( (array) $rows );
+	}
 
-		self::log( $summary );
+	private static function cleanup_pushed_duplicates() {
+		global $wpdb;
+		$rows = $wpdb->get_col(
+			"SELECT pulled.post_id
+			 FROM {$wpdb->postmeta} pulled
+			 INNER JOIN {$wpdb->postmeta} pushed
+			   ON pushed.meta_value = pulled.meta_value AND pushed.post_id <> pulled.post_id
+			 WHERE pulled.meta_key = '_fungies_offer_id'
+			   AND pushed.meta_key = '_fungies_pushed_offer_id'"
+		);
+		$count = 0;
+		foreach ( (array) $rows as $pid ) {
+			if ( wp_delete_post( (int) $pid, true ) ) $count++;
+		}
+		if ( $count > 0 ) {
+			self::log( sprintf( 'Removed %d duplicate WC product(s) re-imported from offers we pushed.', $count ) );
+		}
+		return $count;
+	}
+
+	public static function push_to_fungies( $client ) {
+		$workspace_currency = self::get_workspace_currency( $client );
+
+		$wc_ids = get_posts( array(
+			'post_type'      => 'product',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'meta_query'     => array(
+				array(
+					'key'     => '_fungies_offer_id',
+					'compare' => 'NOT EXISTS',
+				),
+			),
+		) );
+
+		$created = 0;
+		$updated = 0;
+		$skipped = 0;
+		$errors  = array();
+
+		foreach ( $wc_ids as $wc_id ) {
+			$res = Fungies_Product_Push::push( $wc_id, $client, $workspace_currency );
+			if ( 'created' === $res['status'] ) $created++;
+			elseif ( 'updated' === $res['status'] ) $updated++;
+			elseif ( 'skipped' === $res['status'] ) $skipped++;
+			elseif ( 'error' === $res['status'] ) {
+				$errors[] = array( 'name' => $res['name'], 'message' => $res['message'] );
+				self::log( sprintf( 'Push error [%s]: %s', $res['name'], $res['message'] ), 'warning' );
+			}
+		}
 
 		return array(
-			'synced'  => $synced,
 			'created' => $created,
 			'updated' => $updated,
-			'message' => $summary,
+			'skipped' => $skipped,
+			'errors'  => $errors,
 		);
 	}
 
-	private static function build_offer_product_map( $client ) {
-		$map = array();
+	public static function get_workspace_currency( $client ) {
+		$cached = get_transient( 'fungies_workspace_currency' );
+		if ( $cached ) {
+			return $cached;
+		}
 
+		$resp = $client->get_offers( array( 'take' => 50 ) );
+		if ( is_wp_error( $resp ) ) {
+			return strtoupper( get_woocommerce_currency() );
+		}
+		$offers = self::extract_list( $resp, 'offers' );
+
+		$tally = array();
+		foreach ( $offers as $o ) {
+			$cur = strtoupper( $o['currency'] ?? '' );
+			if ( $cur ) $tally[ $cur ] = ( $tally[ $cur ] ?? 0 ) + 1;
+		}
+
+		if ( empty( $tally ) ) {
+			$currency = strtoupper( get_woocommerce_currency() );
+		} else {
+			arsort( $tally );
+			$currency = (string) array_key_first( $tally );
+		}
+
+		set_transient( 'fungies_workspace_currency', $currency, HOUR_IN_SECONDS );
+		return $currency;
+	}
+
+	public static function on_wc_product_saved( $wc_id ) {
+		if ( self::$is_pulling ) {
+			return;
+		}
+		$wc_id = (int) $wc_id;
+		if ( get_transient( "fungies_push_lock_$wc_id" ) ) {
+			return;
+		}
+		set_transient( "fungies_push_lock_$wc_id", 1, 5 );
+		Fungies_Product_Push::push( $wc_id );
+	}
+
+	private static function build_offer_product_map( $client ) {
+		$map  = array();
 		$resp = $client->get( '/products/list?types[]=OneTimePayment' );
 		if ( is_wp_error( $resp ) ) {
-			self::log( 'OneTimePayment products fetch failed: ' . $resp->get_error_message(), 'warning' );
 			return $map;
 		}
-
 		$products = self::extract_list( $resp, 'products' );
-		self::log( 'Found ' . count( $products ) . ' OneTimePayment products.' );
-
 		foreach ( $products as $product ) {
 			$pid = $product['id'] ?? '';
-			if ( ! $pid ) {
-				continue;
-			}
-
+			if ( ! $pid ) continue;
 			$detail = $client->get_product( $pid );
-			if ( is_wp_error( $detail ) ) {
-				continue;
-			}
-
+			if ( is_wp_error( $detail ) ) continue;
 			$full   = $detail['data']['product'] ?? $product;
 			$offers = $detail['data']['offers'] ?? array();
-
-			self::log( sprintf( 'Product "%s" has %d offers.', $full['name'] ?? '(no name)', count( $offers ) ) );
-
 			foreach ( $offers as $offer_ref ) {
 				$oid = $offer_ref['id'] ?? '';
-				if ( $oid ) {
-					$map[ $oid ] = $full;
-				}
+				if ( $oid ) $map[ $oid ] = $full;
 			}
 		}
-
-		self::log( 'Mapped ' . count( $map ) . ' offers to OneTimePayment products.' );
 		return $map;
 	}
 
@@ -150,7 +261,7 @@ class Fungies_Product_Sync {
 
 		$offer_desc   = $offer['description'] ?? '';
 		$product_desc = ! empty( $fg_product['description'] ) ? $fg_product['description'] : '';
-		$desc = ! empty( $offer_desc ) ? $offer_desc : $product_desc;
+		$desc         = ! empty( $offer_desc ) ? $offer_desc : $product_desc;
 
 		$product_data = array(
 			'post_title'   => $name,
@@ -177,7 +288,6 @@ class Fungies_Product_Sync {
 		update_post_meta( $wc_id, '_manage_stock', 'no' );
 
 		self::apply_offer_meta( $wc_id, $offer );
-
 		if ( $fg_product ) {
 			self::apply_product_meta( $wc_id, $fg_product, $is_update );
 		}
@@ -187,29 +297,19 @@ class Fungies_Product_Sync {
 
 	private static function apply_product_meta( $wc_id, $fg_product, $is_update ) {
 		$fg_pid = $fg_product['id'] ?? '';
-		if ( $fg_pid ) {
-			update_post_meta( $wc_id, '_fungies_product_id', $fg_pid );
-		}
+		if ( $fg_pid ) update_post_meta( $wc_id, '_fungies_product_id', $fg_pid );
 
 		$type = $fg_product['type'] ?? '';
-		if ( $type ) {
-			update_post_meta( $wc_id, '_fungies_product_type', $type );
-		}
+		if ( $type ) update_post_meta( $wc_id, '_fungies_product_type', $type );
 
 		$checkout_url = $fg_product['checkoutUrl'] ?? ( $fg_product['checkout_url'] ?? '' );
-		if ( $checkout_url ) {
-			update_post_meta( $wc_id, '_fungies_checkout_url', $checkout_url );
-		}
+		if ( $checkout_url ) update_post_meta( $wc_id, '_fungies_checkout_url', $checkout_url );
 
 		$developer = $fg_product['developer'] ?? '';
-		if ( $developer ) {
-			update_post_meta( $wc_id, '_fungies_developer', $developer );
-		}
+		if ( $developer ) update_post_meta( $wc_id, '_fungies_developer', $developer );
 
 		$publisher = $fg_product['publisher'] ?? '';
-		if ( $publisher ) {
-			update_post_meta( $wc_id, '_fungies_publisher', $publisher );
-		}
+		if ( $publisher ) update_post_meta( $wc_id, '_fungies_publisher', $publisher );
 
 		$image_url = $fg_product['imageUrl'] ?? ( $fg_product['image_url'] ?? '' );
 		if ( $image_url && ! $is_update ) {
@@ -237,26 +337,16 @@ class Fungies_Product_Sync {
 		}
 
 		update_post_meta( $product_id, '_fungies_currency', $currency );
-
-		$wc_currency = get_woocommerce_currency();
-		if ( $currency !== $wc_currency ) {
-			self::log( sprintf(
-				'Offer %s is in %s (store currency: %s) — price displayed with original currency.',
-				substr( $offer_id, 0, 8 ), $currency, $wc_currency
-			) );
-		}
 	}
 
 	private static function find_wc_product_by_offer_id( $offer_id ) {
 		global $wpdb;
-
 		$product_id = $wpdb->get_var( $wpdb->prepare(
 			"SELECT post_id FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_fungies_offer_id' AND meta_value = %s
 			 LIMIT 1",
 			$offer_id
 		) );
-
 		return $product_id ? (int) $product_id : null;
 	}
 
@@ -266,9 +356,7 @@ class Fungies_Product_Sync {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/image.php';
 		}
-
 		$attachment_id = media_sideload_image( $image_url, $product_id, '', 'id' );
-
 		if ( ! is_wp_error( $attachment_id ) ) {
 			set_post_thumbnail( $product_id, $attachment_id );
 		}

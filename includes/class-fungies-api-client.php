@@ -41,7 +41,7 @@ class Fungies_API_Client {
 	public function post( $endpoint, $body = array() ) {
 		$url = $this->base_url . $endpoint;
 
-		$this->log( 'POST ' . $url );
+		$this->log( 'POST ' . $url . ' body=' . wp_json_encode( $body ) );
 
 		$response = wp_remote_post( $url, array(
 			'headers' => $this->headers(),
@@ -55,7 +55,7 @@ class Fungies_API_Client {
 	public function patch( $endpoint, $body = array() ) {
 		$url = $this->base_url . $endpoint;
 
-		$this->log( 'PATCH ' . $url );
+		$this->log( 'PATCH ' . $url . ' body=' . wp_json_encode( $body ) );
 
 		$response = wp_remote_request( $url, array(
 			'method'  => 'PATCH',
@@ -106,6 +106,26 @@ class Fungies_API_Client {
 
 	public function get_orders() {
 		return $this->get( '/orders/list' );
+	}
+
+	public function create_product( $body ) {
+		return $this->post( '/products/create', $body );
+	}
+
+	public function update_product( $id, $body ) {
+		return $this->patch( '/products/' . $id . '/update', $body );
+	}
+
+	public function create_offer( $body ) {
+		return $this->post( '/offers/create', $body );
+	}
+
+	public function update_offer( $id, $body ) {
+		return $this->patch( '/offers/' . $id . '/update', $body );
+	}
+
+	public function create_checkout_element( $body ) {
+		return $this->post( '/elements/checkout/create', $body );
 	}
 
 	private function log( $message, $level = 'info' ) {

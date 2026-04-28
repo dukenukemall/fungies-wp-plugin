@@ -6,3 +6,84 @@
   font-weight: 600;
   vertical-align: middle;
 }
+
+.fungies-sync-panel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #c3c4c7;
+  border-left-width: 4px;
+  border-left-color: #2e7d32;
+  border-radius: 4px;
+  background: #f6fff7;
+  max-width: 720px;
+}
+
+.fungies-sync-panel.has-errors {
+  border-left-color: #b26200;
+  background: #fff8e5;
+}
+
+.fungies-sync-panel.fatal {
+  border-left-color: #b32d2e;
+  background: #fcebec;
+}
+
+.fungies-sync-summary {
+  margin: 0;
+}
+
+.fungies-sync-row {
+  margin: 4px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fungies-sync-label {
+  display: inline-block;
+  min-width: 150px;
+  color: #50575e;
+}
+
+.fungies-sync-row strong {
+  color: #1d2327;
+}
+
+.fungies-sync-errors {
+  margin-top: 10px;
+  border-top: 1px solid #dcdcde;
+  padding-top: 8px;
+}
+
+.fungies-sync-errors-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #b26200;
+  font-size: 13px;
+}
+
+.fungies-sync-errors-list {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  list-style: disc;
+}
+
+.fungies-sync-errors-list li.error {
+  color: #b32d2e;
+  font-size: 13px;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.fungies-sync-errors-list li.error strong {
+  color: #1d2327;
+}
+
+@media (max-width: 782px) {
+  .fungies-sync-panel {
+    max-width: 100%;
+  }
+  .fungies-sync-label {
+    display: block;
+    min-width: 0;
+  }
+}

@@ -22,7 +22,10 @@ class Fungies_Loader {
 
 		require_once $dir . 'class-fungies-api-client.php';
 		require_once $dir . 'class-fungies-admin-settings.php';
+		require_once $dir . 'class-fungies-product-body.php';
+		require_once $dir . 'class-fungies-product-push.php';
 		require_once $dir . 'class-fungies-product-sync.php';
+		require_once $dir . 'class-fungies-checkout-url-builder.php';
 		require_once $dir . 'class-fungies-payment-gateway.php';
 		require_once $dir . 'class-fungies-checkout.php';
 		require_once $dir . 'class-fungies-webhook-handler.php';
