@@ -30,3 +30,11 @@ Thumbs.db
 
 # Local Knowledge Base (Obsidian wiki)
 .kb/
+
+# Cursor IDE rules and settings
+.cursor/
+.cursorrules
+
+# Local debug / scratch artifacts
+offers.json
+.commit-msg.tmp
