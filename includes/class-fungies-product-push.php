@@ -21,8 +21,8 @@ class Fungies_Product_Push {
 		$wc = wc_get_product( $wc_id );
 		if ( ! $wc ) return self::r( 'skipped', $wc_id, $post->post_title, 'Product not loadable.' );
 
-		$pid   = get_post_meta( $wc_id, '_fungies_pushed_product_id', true );
-		$oid   = get_post_meta( $wc_id, '_fungies_pushed_offer_id', true );
+		$pid   = Fungies_Workspace_Meta::get_product_id( $wc_id );
+		$oid   = Fungies_Workspace_Meta::get_offer_id( $wc_id );
 		$pbody = Fungies_Product_Body::product( $wc );
 		$obody = Fungies_Product_Body::offer( $wc, $workspace_currency );
 
@@ -38,9 +38,8 @@ class Fungies_Product_Push {
 		$r1 = $client->update_product( $pid, array_merge( array( 'id' => $pid ), $pbody ) );
 		if ( is_wp_error( $r1 ) ) {
 			if ( self::is_not_found( $r1 ) ) {
-				delete_post_meta( $wc_id, '_fungies_pushed_product_id' );
-				delete_post_meta( $wc_id, '_fungies_pushed_offer_id' );
-				self::log( sprintf( 'Stale Fungies product/offer IDs cleared for WC #%d (%s) — recreating in current workspace.', $wc_id, $wc->get_name() ) );
+				Fungies_Workspace_Meta::delete_ids( $wc_id );
+				self::log( sprintf( 'Stale Fungies product/offer IDs cleared for WC #%d (%s) — recreating in current workspace [%s].', $wc_id, $wc->get_name(), Fungies_Workspace_Meta::workspace_hash() ) );
 				return null;
 			}
 			return self::r( 'error', $wc_id, $wc->get_name(), 'Product update: ' . $r1->get_error_message() );
@@ -50,18 +49,18 @@ class Fungies_Product_Push {
 			if ( self::is_not_found( $r2 ) ) return self::recreate_offer( $client, $wc_id, $wc, $pid, $obody );
 			return self::r( 'error', $wc_id, $wc->get_name(), 'Offer update: ' . $r2->get_error_message() );
 		}
-		update_post_meta( $wc_id, '_fungies_pushed_at', current_time( 'mysql' ) );
+		// Persist scoped meta (covers legacy → scoped migration after a successful update).
+		Fungies_Workspace_Meta::set_ids( $wc_id, $pid, $oid );
 		return self::r( 'updated', $wc_id, $wc->get_name(), 'Updated in Fungies.' );
 	}
 
 	private static function recreate_offer( $client, $wc_id, $wc, $pid, $obody ) {
-		delete_post_meta( $wc_id, '_fungies_pushed_offer_id' );
+		Fungies_Workspace_Meta::delete_offer_id( $wc_id );
 		$obody['productId'] = $pid;
 		$r = $client->create_offer( $obody );
 		if ( is_wp_error( $r ) ) return self::r( 'error', $wc_id, $wc->get_name(), 'Offer recreate: ' . $r->get_error_message() );
 		$new_oid = $r['data']['offer']['id'] ?? '';
-		if ( $new_oid ) update_post_meta( $wc_id, '_fungies_pushed_offer_id', $new_oid );
-		update_post_meta( $wc_id, '_fungies_pushed_at', current_time( 'mysql' ) );
+		Fungies_Workspace_Meta::set_ids( $wc_id, $pid, $new_oid );
 		return self::r( 'updated', $wc_id, $wc->get_name(), 'Recreated stale offer in Fungies.' );
 	}
 
@@ -76,9 +75,7 @@ class Fungies_Product_Push {
 		if ( is_wp_error( $r2 ) ) return self::r( 'error', $wc_id, $wc->get_name(), 'Offer create: ' . $r2->get_error_message() );
 		$new_oid = $r2['data']['offer']['id'] ?? '';
 
-		update_post_meta( $wc_id, '_fungies_pushed_product_id', $new_pid );
-		if ( $new_oid ) update_post_meta( $wc_id, '_fungies_pushed_offer_id', $new_oid );
-		update_post_meta( $wc_id, '_fungies_pushed_at', current_time( 'mysql' ) );
+		Fungies_Workspace_Meta::set_ids( $wc_id, $new_pid, $new_oid );
 		return self::r( 'created', $wc_id, $wc->get_name(), 'Created in Fungies.' );
 	}
 

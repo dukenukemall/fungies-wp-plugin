@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.1.7
+Stable tag: 2.1.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,12 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.1.8 =
+* Fixed: Toggling Sandbox Mode (or rotating API keys) no longer creates duplicate products in the destination workspace. Pushed product/offer IDs are now stored per workspace (`_fungies_pushed_*__<workspace_hash>`), so the original mapping in the previous workspace is preserved on environment switch.
+* Added: `Fungies_Workspace_Meta` helper that scopes all push-side post meta by a hash of the active secret key.
+* Migration: Legacy unscoped `_fungies_pushed_*` meta is read as a fallback and silently migrated to the active workspace on the next successful push.
+* Updated: `Sync Now` pull-deduplication and one-time cleanup queries now consider both legacy and workspace-scoped meta keys.
 
 = 2.1.7 =
 * Fixed: Push to Fungies now recovers from "Product not found" errors (e.g. after switching from staging to production API keys). Stale Fungies product/offer IDs are cleared and the product is recreated in the current workspace.

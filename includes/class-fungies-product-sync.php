@@ -100,22 +100,19 @@ class Fungies_Product_Sync {
 	}
 
 	private static function get_pushed_offer_ids() {
-		global $wpdb;
-		$rows = $wpdb->get_col(
-			"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_fungies_pushed_offer_id' AND meta_value <> ''"
-		);
-		return array_flip( (array) $rows );
+		return Fungies_Workspace_Meta::get_all_pushed_offer_ids();
 	}
 
 	private static function cleanup_pushed_duplicates() {
 		global $wpdb;
+		$pushed_clause = Fungies_Workspace_Meta::pushed_offer_meta_key_sql_clause( 'pushed' );
 		$rows = $wpdb->get_col(
 			"SELECT pulled.post_id
 			 FROM {$wpdb->postmeta} pulled
 			 INNER JOIN {$wpdb->postmeta} pushed
 			   ON pushed.meta_value = pulled.meta_value AND pushed.post_id <> pulled.post_id
 			 WHERE pulled.meta_key = '_fungies_offer_id'
-			   AND pushed.meta_key = '_fungies_pushed_offer_id'"
+			   AND $pushed_clause"
 		);
 		$count = 0;
 		foreach ( (array) $rows as $pid ) {

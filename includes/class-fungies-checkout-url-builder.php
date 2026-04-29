@@ -39,7 +39,7 @@ class Fungies_Checkout_URL_Builder {
 			$qty      = max( 1, (int) $item->get_quantity() );
 			$offer_id = get_post_meta( $pid, '_fungies_offer_id', true );
 			if ( ! $offer_id ) {
-				$offer_id = get_post_meta( $pid, '_fungies_pushed_offer_id', true );
+				$offer_id = Fungies_Workspace_Meta::get_offer_id( $pid );
 			}
 			if ( ! $offer_id ) {
 				self::log( sprintf( 'Order #%d item "%s" (product %d) has no Fungies offer ID — skipping.', $order->get_id(), $item->get_name(), $pid ), 'warning' );
