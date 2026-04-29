@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.1.9
+Stable tag: 2.1.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,10 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.1.10 =
+* Build: Added `build.ps1` that produces the WordPress-ready zip via `git archive` and refuses to ship if any entry uses backslash separators. Locks in the v2.1.9 packaging fix so we can never regress to the v2.1.8 broken-zip bug again.
+* No runtime code changes — same plugin code as v2.1.9.
 
 = 2.1.9 =
 * Fixed: Plugin zip path separators (forward slashes) for Linux-based WordPress hosts. The 2.1.8 zip was built with PowerShell `Compress-Archive` which uses backslashes inside the zip, causing "Plugin file does not exist" errors on Linux hosts. v2.1.9 ships the same code as 2.1.8 in a properly-built zip.
