@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.1.8
+Stable tag: 2.1.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.1.9 =
+* Fixed: Plugin zip path separators (forward slashes) for Linux-based WordPress hosts. The 2.1.8 zip was built with PowerShell `Compress-Archive` which uses backslashes inside the zip, causing "Plugin file does not exist" errors on Linux hosts. v2.1.9 ships the same code as 2.1.8 in a properly-built zip.
 
 = 2.1.8 =
 * Fixed: Toggling Sandbox Mode (or rotating API keys) no longer creates duplicate products in the destination workspace. Pushed product/offer IDs are now stored per workspace (`_fungies_pushed_*__<workspace_hash>`), so the original mapping in the previous workspace is preserved on environment switch.
