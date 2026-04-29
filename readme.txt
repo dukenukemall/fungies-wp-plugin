@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.1.10
+Stable tag: 2.1.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,14 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.1.11 =
+* Fix: Customers returning from Fungies hosted checkout on production now reliably land on the WooCommerce order-received ("thank you") page instead of being bounced back to the checkout/cart. Root cause was a race between the Fungies `payment_success` webhook and the customer's redirect: production webhooks fire fast enough that by the time the user lands on `?wc-api=fungies_return`, the order has already moved from `pending` to `processing`, and the old fallback only matched `pending` orders.
+* Added `Fungies_Return_Resolver` with three layered recovery strategies, in order of reliability:
+  1. WC session — the WC order id is now stashed in the session at redirect time, so the return handler can recover it deterministically without depending on the webhook.
+  2. Broadened email fallback — now matches `pending`, `on-hold`, `processing`, `completed` instead of `pending` only.
+  3. Brief poll (~3s) for the meta or matching order, in case the webhook is landing right at that moment.
+* `_fungies_order_id` post meta is now linked at return time using the `fngs-order-id` URL param, so subsequent webhook calls always match the existing order via meta and never create duplicate orphan orders.
 
 = 2.1.10 =
 * Build: Added `build.ps1` that produces the WordPress-ready zip via `git archive` and refuses to ship if any entry uses backslash separators. Locks in the v2.1.9 packaging fix so we can never regress to the v2.1.8 broken-zip bug again.

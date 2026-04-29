@@ -17,35 +17,35 @@ class Fungies_Checkout {
 			array( 'source' => 'fungies' )
 		);
 
-		$wc_order = null;
-
-		if ( $fungies_order_id ) {
-			$wc_order = self::find_order_by_meta( '_fungies_order_id', $fungies_order_id );
-		}
-
-		if ( ! $wc_order ) {
-			$wc_order = self::find_latest_pending_fungies_order( $fungies_email );
-		}
+		$wc_order = Fungies_Return_Resolver::resolve( $fungies_order_id, $fungies_email );
 
 		if ( $wc_order && $fungies_order_id ) {
-			$existing = $wc_order->get_meta( '_fungies_order_id' );
-			if ( ! $existing ) {
-				$wc_order->update_meta_data( '_fungies_order_id', $fungies_order_id );
-				$wc_order->save();
-				wc_get_logger()->info(
-					sprintf( '[Return] Linked Fungies order %s -> WC order #%d', $fungies_order_id, $wc_order->get_id() ),
-					array( 'source' => 'fungies' )
-				);
-			}
+			self::link_fungies_order_meta( $wc_order, $fungies_order_id );
 		}
+
+		Fungies_Return_Resolver::clear();
 
 		if ( $wc_order ) {
 			wp_safe_redirect( $wc_order->get_checkout_order_received_url() );
 			exit;
 		}
 
+		wc_get_logger()->warning(
+			'[Return] Could not resolve any WC order for return. Falling back to checkout URL.',
+			array( 'source' => 'fungies' )
+		);
 		wp_safe_redirect( wc_get_checkout_url() );
 		exit;
+	}
+
+	private static function link_fungies_order_meta( $wc_order, $fungies_order_id ) {
+		if ( $wc_order->get_meta( '_fungies_order_id' ) ) return;
+		$wc_order->update_meta_data( '_fungies_order_id', $fungies_order_id );
+		$wc_order->save();
+		wc_get_logger()->info(
+			sprintf( '[Return] Linked Fungies order %s -> WC order #%d', $fungies_order_id, $wc_order->get_id() ),
+			array( 'source' => 'fungies' )
+		);
 	}
 
 	public static function handle_thankyou( $order_id ) {
@@ -82,35 +82,4 @@ class Fungies_Checkout {
 		return add_query_arg( 'wc-api', 'fungies_return', home_url( '/' ) );
 	}
 
-	private static function find_order_by_meta( $key, $value ) {
-		if ( empty( $value ) ) {
-			return null;
-		}
-
-		$orders = wc_get_orders( array(
-			'meta_key'   => $key,
-			'meta_value' => $value,
-			'limit'      => 1,
-		) );
-
-		return ! empty( $orders ) ? $orders[0] : null;
-	}
-
-	private static function find_latest_pending_fungies_order( $email = '' ) {
-		$args = array(
-			'status'         => 'pending',
-			'payment_method' => 'fungies',
-			'limit'          => 1,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-		);
-
-		if ( $email ) {
-			$args['billing_email'] = $email;
-		}
-
-		$orders = wc_get_orders( $args );
-
-		return ! empty( $orders ) ? $orders[0] : null;
-	}
 }

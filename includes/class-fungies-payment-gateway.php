@@ -49,6 +49,11 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 		$order = wc_get_order( $order_id );
 		$order->update_status( 'pending', __( 'Awaiting Fungies payment.', 'fungies-wp' ) );
 
+		// Remember the WC order id in the WC session so we can recover it on
+		// return even if the Fungies webhook hasn't landed yet (production
+		// webhooks fire fast enough to race the customer's redirect).
+		Fungies_Return_Resolver::remember( $order_id );
+
 		$redirect_url = Fungies_Checkout_URL_Builder::build( $order );
 
 		wc_get_logger()->info(
