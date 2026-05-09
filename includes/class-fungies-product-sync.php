@@ -38,16 +38,20 @@ class Fungies_Product_Sync {
 			return $pull;
 		}
 
-		$push = self::push_to_fungies( $client );
+		$push    = self::push_to_fungies( $client );
+		$coupons = Fungies_Coupon_Sync::sync( $client );
 
-		$pull_synced = ( $pull['created'] ?? 0 ) + ( $pull['updated'] ?? 0 );
-		$push_synced = ( $push['created'] ?? 0 ) + ( $push['updated'] ?? 0 );
-		$err_count   = count( $push['errors'] ?? array() );
+		$pull_synced    = ( $pull['created'] ?? 0 ) + ( $pull['updated'] ?? 0 );
+		$push_synced    = ( $push['created'] ?? 0 ) + ( $push['updated'] ?? 0 );
+		$err_count      = count( $push['errors'] ?? array() );
+		$coupon_synced  = ( $coupons['created'] ?? 0 ) + ( $coupons['updated'] ?? 0 );
+		$coupon_errs    = count( $coupons['errors'] ?? array() );
 
 		$message = sprintf(
-			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors).', 'fungies-wp' ),
+			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors). Coupons: %8$d (%9$d created, %10$d updated, %11$d errors).', 'fungies-wp' ),
 			$pull_synced, $pull['created'], $pull['updated'],
-			$push_synced, $push['created'], $push['updated'], $err_count
+			$push_synced, $push['created'], $push['updated'], $err_count,
+			$coupon_synced, $coupons['created'], $coupons['updated'], $coupon_errs
 		);
 
 		update_option( 'fungies_last_sync', current_time( 'mysql' ) );
@@ -58,6 +62,7 @@ class Fungies_Product_Sync {
 		return array(
 			'pull'    => $pull,
 			'push'    => $push,
+			'coupons' => $coupons,
 			'message' => $message,
 		);
 	}

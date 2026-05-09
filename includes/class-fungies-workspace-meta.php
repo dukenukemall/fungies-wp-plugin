@@ -16,6 +16,7 @@ class Fungies_Workspace_Meta {
 	const PREFIX_PRODUCT   = '_fungies_pushed_product_id';
 	const PREFIX_OFFER     = '_fungies_pushed_offer_id';
 	const PREFIX_PUSHED_AT = '_fungies_pushed_at';
+	const PREFIX_DISCOUNT  = '_fungies_pushed_discount_id';
 
 	public static function workspace_hash() {
 		$secret = (string) Fungies_Admin_Settings::get_active_secret_key();
@@ -28,6 +29,20 @@ class Fungies_Workspace_Meta {
 	public static function product_meta_key()   { return self::PREFIX_PRODUCT   . '__' . self::workspace_hash(); }
 	public static function offer_meta_key()     { return self::PREFIX_OFFER     . '__' . self::workspace_hash(); }
 	public static function pushed_at_meta_key() { return self::PREFIX_PUSHED_AT . '__' . self::workspace_hash(); }
+	public static function discount_meta_key()  { return self::PREFIX_DISCOUNT  . '__' . self::workspace_hash(); }
+
+	public static function get_discount_id( $coupon_id ) {
+		$val = get_post_meta( $coupon_id, self::discount_meta_key(), true );
+		if ( '' !== $val ) return (string) $val;
+		return (string) get_post_meta( $coupon_id, self::PREFIX_DISCOUNT, true );
+	}
+
+	public static function set_discount_id( $coupon_id, $discount_id ) {
+		if ( $discount_id ) {
+			update_post_meta( $coupon_id, self::discount_meta_key(), $discount_id );
+			delete_post_meta( $coupon_id, self::PREFIX_DISCOUNT );
+		}
+	}
 
 	public static function get_product_id( $wc_id ) {
 		$val = get_post_meta( $wc_id, self::product_meta_key(), true );

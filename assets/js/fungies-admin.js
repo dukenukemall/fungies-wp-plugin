@@ -55,6 +55,7 @@
     var $inline = $("#fungies-sync-result");
     var $pull = $panel.find(".fungies-sync-pull-text");
     var $push = $panel.find(".fungies-sync-push-text");
+    var $coupons = $panel.find(".fungies-sync-coupons-text");
     var $errors = $panel.find(".fungies-sync-errors");
     var $errorsList = $panel.find(".fungies-sync-errors-list");
     var $errorsSummary = $panel.find(".fungies-sync-errors-summary");
@@ -67,6 +68,7 @@
       $panel.addClass("fatal").prop("hidden", false);
       $pull.text("—");
       $push.text("—");
+      $coupons.text("—");
       $errors.prop("hidden", false);
       $errorsSummary.text("Sync failed");
       $errorsList.append(
@@ -78,9 +80,16 @@
     var d = resp.data || {};
     var pull = d.pull || { created: 0, updated: 0 };
     var push = d.push || { created: 0, updated: 0, skipped: 0, errors: [] };
+    var coupons = d.coupons || { created: 0, updated: 0, skipped: 0, errors: [] };
     var pullSynced = (pull.created || 0) + (pull.updated || 0);
     var pushSynced = (push.created || 0) + (push.updated || 0);
-    var errorList = push.errors || [];
+    var couponsSynced = (coupons.created || 0) + (coupons.updated || 0);
+    var couponErrors = coupons.errors || [];
+    var errorList = (push.errors || []).concat(
+      couponErrors.map(function (e) {
+        return { name: "Coupon " + (e.name || ""), message: e.message || "" };
+      })
+    );
 
     $pull.text(
       pullSynced +
@@ -97,7 +106,17 @@
         " created, " +
         (push.updated || 0) +
         " updated, " +
-        errorList.length +
+        (push.errors || []).length +
+        " errors)"
+    );
+    $coupons.text(
+      couponsSynced +
+        " (" +
+        (coupons.created || 0) +
+        " created, " +
+        (coupons.updated || 0) +
+        " updated, " +
+        couponErrors.length +
         " errors)"
     );
 

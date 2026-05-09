@@ -192,6 +192,10 @@ class Fungies_Admin_Settings {
 								<span class="fungies-sync-label"><?php esc_html_e( 'Push to Fungies:', 'fungies-wp' ); ?></span>
 								<strong class="fungies-sync-push-text">—</strong>
 							</p>
+							<p class="fungies-sync-row fungies-sync-coupons">
+								<span class="fungies-sync-label"><?php esc_html_e( 'Coupons → Fungies:', 'fungies-wp' ); ?></span>
+								<strong class="fungies-sync-coupons-text">—</strong>
+							</p>
 						</div>
 						<details class="fungies-sync-errors" hidden>
 							<summary class="fungies-sync-errors-summary"></summary>

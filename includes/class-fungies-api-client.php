@@ -128,6 +128,18 @@ class Fungies_API_Client {
 		return $this->post( '/elements/checkout/create', $body );
 	}
 
+	public function get_discounts( $query = array() ) {
+		return $this->get( '/discounts/list', $query );
+	}
+
+	public function create_discount( $body ) {
+		return $this->post( '/discounts/create', $body );
+	}
+
+	public function update_discount( $id, $body ) {
+		return $this->patch( '/discounts/' . $id . '/update', $body );
+	}
+
 	private function log( $message, $level = 'info' ) {
 		if ( ! function_exists( 'wc_get_logger' ) ) {
 			return;

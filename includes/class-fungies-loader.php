@@ -26,6 +26,8 @@ class Fungies_Loader {
 		require_once $dir . 'class-fungies-product-body.php';
 		require_once $dir . 'class-fungies-product-push.php';
 		require_once $dir . 'class-fungies-product-sync.php';
+		require_once $dir . 'class-fungies-coupon-mapper.php';
+		require_once $dir . 'class-fungies-coupon-sync.php';
 		require_once $dir . 'class-fungies-checkout-url-builder.php';
 		require_once $dir . 'class-fungies-return-resolver.php';
 		require_once $dir . 'class-fungies-payment-gateway.php';
