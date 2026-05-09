@@ -22,11 +22,6 @@ class Fungies_Coupon_Sync {
 		$currency  = strtoupper( get_woocommerce_currency() );
 		$timezone  = self::resolve_timezone();
 		$remote    = self::index_remote_discounts( $client );
-		if ( is_wp_error( $remote ) ) {
-			return self::result( 0, 0, 0, array(
-				array( 'name' => 'remote-list', 'message' => $remote->get_error_message() ),
-			), $remote->get_error_message() );
-		}
 
 		$created = 0;
 		$updated = 0;
@@ -55,28 +50,33 @@ class Fungies_Coupon_Sync {
 	}
 
 	private static function sync_one( $client, WC_Coupon $coupon, $currency, $timezone, array $remote ) {
-		$payload = Fungies_Coupon_Mapper::build_payload( $coupon, $currency, $timezone );
-		$code    = $coupon->get_code();
-
-		$discount_id = Fungies_Workspace_Meta::get_discount_id( $coupon->get_id() );
+		$payload     = Fungies_Coupon_Mapper::build_payload( $coupon, $currency, $timezone );
+		$code        = $coupon->get_code();
+		$coupon_id   = $coupon->get_id();
+		$discount_id = Fungies_Workspace_Meta::get_discount_id( $coupon_id );
 		$remote_obj  = null;
+
 		if ( $discount_id && isset( $remote['by_id'][ $discount_id ] ) ) {
 			$remote_obj = $remote['by_id'][ $discount_id ];
 		} elseif ( isset( $remote['by_code'][ strtolower( $code ) ] ) ) {
 			$remote_obj  = $remote['by_code'][ strtolower( $code ) ];
 			$discount_id = $remote_obj['id'];
-			Fungies_Workspace_Meta::set_discount_id( $coupon->get_id(), $discount_id );
+			Fungies_Workspace_Meta::set_discount_id( $coupon_id, $discount_id );
 		}
 
-		if ( $remote_obj && $discount_id ) {
-			if ( ! Fungies_Coupon_Mapper::diff_for_update( $payload, $remote_obj ) ) {
+		if ( $discount_id ) {
+			if ( $remote_obj && ! Fungies_Coupon_Mapper::diff_for_update( $payload, $remote_obj ) ) {
 				return array( 'status' => 'unchanged' );
 			}
 			$resp = $client->update_discount( $discount_id, $payload );
-			if ( is_wp_error( $resp ) ) {
+			if ( ! is_wp_error( $resp ) ) {
+				return array( 'status' => 'updated' );
+			}
+			if ( ! self::is_not_found( $resp ) ) {
 				return array( 'status' => 'error', 'message' => $resp->get_error_message() );
 			}
-			return array( 'status' => 'updated' );
+			Fungies_Workspace_Meta::set_discount_id( $coupon_id, '' );
+			delete_post_meta( $coupon_id, Fungies_Workspace_Meta::discount_meta_key() );
 		}
 
 		$resp = $client->create_discount( $payload );
@@ -85,31 +85,58 @@ class Fungies_Coupon_Sync {
 		}
 		$new_id = $resp['data']['discount']['id'] ?? '';
 		if ( $new_id ) {
-			Fungies_Workspace_Meta::set_discount_id( $coupon->get_id(), $new_id );
+			Fungies_Workspace_Meta::set_discount_id( $coupon_id, $new_id );
 		}
 		return array( 'status' => 'created' );
 	}
 
+	private static function is_not_found( WP_Error $err ) {
+		$data = $err->get_error_data();
+		$status = is_array( $data ) ? ( $data['status'] ?? 0 ) : 0;
+		if ( 404 === (int) $status ) return true;
+		$msg = strtolower( (string) $err->get_error_message() );
+		return false !== strpos( $msg, 'not found' );
+	}
+
 	private static function index_remote_discounts( $client ) {
+		$resp = $client->get_discounts( array( 'type' => 'code', 'take' => 100 ) );
+		if ( ! is_wp_error( $resp ) ) {
+			return self::collect_remote( $resp['data']['discounts'] ?? array() );
+		}
+		self::log( 'Bulk discounts list failed (' . $resp->get_error_message() . '), falling back to row-by-row walk.', 'warning' );
+		return self::walk_remote_discounts( $client );
+	}
+
+	private static function walk_remote_discounts( $client ) {
+		$by_code  = array();
+		$by_id    = array();
+		$consec   = 0;
+		$max_skip = 200;
+
+		for ( $skip = 0; $skip < $max_skip; $skip++ ) {
+			$resp = $client->get_discounts( array( 'type' => 'code', 'take' => 1, 'skip' => $skip ) );
+			if ( is_wp_error( $resp ) ) {
+				if ( ++$consec >= 25 ) break;
+				continue;
+			}
+			$consec = 0;
+			$list   = $resp['data']['discounts'] ?? array();
+			if ( empty( $list ) ) break;
+			$res    = self::collect_remote( $list );
+			$by_code = $by_code + $res['by_code'];
+			$by_id   = $by_id + $res['by_id'];
+		}
+
+		return array( 'by_code' => $by_code, 'by_id' => $by_id );
+	}
+
+	private static function collect_remote( array $list ) {
 		$by_code = array();
 		$by_id   = array();
-		$skip    = 0;
-		$take    = 100;
-		do {
-			$resp = $client->get_discounts( array( 'type' => 'code', 'take' => $take, 'skip' => $skip, 'withArchived' => 'false' ) );
-			if ( is_wp_error( $resp ) ) {
-				if ( 0 === $skip ) return $resp;
-				break;
-			}
-			$list = $resp['data']['discounts'] ?? array();
-			foreach ( $list as $d ) {
-				if ( ! empty( $d['discountCode'] ) ) $by_code[ strtolower( $d['discountCode'] ) ] = $d;
-				if ( ! empty( $d['id'] ) ) $by_id[ $d['id'] ] = $d;
-			}
-			$skip += $take;
-			if ( count( $list ) < $take ) break;
-		} while ( true );
-
+		foreach ( $list as $d ) {
+			if ( ! empty( $d['discountCode'] ) ) $by_code[ strtolower( $d['discountCode'] ) ] = $d;
+			if ( ! empty( $d['id'] ) ) $by_id[ $d['id'] ] = $d;
+		}
 		return array( 'by_code' => $by_code, 'by_id' => $by_id );
 	}
 

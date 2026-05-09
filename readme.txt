@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,11 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.2.2 =
+* Fix: Coupon sync no longer aborts when the Fungies `GET /v0/discounts/list` endpoint returns 500 because of pre-existing rows with negative `validFrom` Dates (a known server-side timezone bug). The plugin now falls back to a row-by-row walk that skips broken pages, and primarily relies on the local `_fungies_pushed_discount_id` post meta to decide between create and update.
+* Fix: If an UPDATE call returns "not found" (e.g., the Fungies discount was archived/deleted manually), the plugin now clears the stale local mapping and creates a fresh discount instead of erroring.
+* Note for existing installs: any duplicate `percent10` / `fixed1` rows already in your Fungies workspace from a v2.2.0 install must be archived manually in the Fungies dashboard — the plugin can no longer see them through the broken LIST page.
 
 = 2.2.1 =
 * Fix: Fungies API rejects `validFrom: 0` with "Number must be greater than or equal to 0" even though the spec lists 0 as valid. The coupon now sends the WooCommerce coupon's actual `date_created` timestamp (or current time as fallback) for `validFrom`, which is also more semantically correct.
