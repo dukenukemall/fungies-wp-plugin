@@ -12,13 +12,23 @@ class Fungies_Coupon_Mapper {
 		$post_status    = get_post_status( $coupon->get_id() );
 		$status         = ( 'publish' === $post_status ) ? 'active' : 'inactive';
 
+		$created   = $coupon->get_date_created();
+		$valid_from = $created ? (int) $created->getTimestamp() : time();
+
+		$expires    = $coupon->get_date_expires();
+		$valid_until = $expires ? (int) $expires->getTimestamp() : null;
+
+		$usage_limit    = $coupon->get_usage_limit();
+		$purchase_limit = ( $usage_limit && (int) $usage_limit > 0 ) ? (int) $usage_limit : null;
+
 		$payload = array(
 			'type'              => 'code',
 			'name'              => $code,
 			'discountCode'      => $code,
 			'amount'            => $amount,
 			'amountType'        => $amount_type,
-			'validFrom'         => 0,
+			'validFrom'         => $valid_from,
+			'validUntil'        => $valid_until,
 			'currency'          => strtoupper( $currency ),
 			'status'            => $status,
 			'includesAllOffers' => true,
@@ -27,14 +37,8 @@ class Fungies_Coupon_Mapper {
 			'timezone'          => $timezone,
 		);
 
-		$expires = $coupon->get_date_expires();
-		if ( $expires ) {
-			$payload['validUntil'] = (int) $expires->getTimestamp();
-		}
-
-		$usage_limit = $coupon->get_usage_limit();
-		if ( $usage_limit && (int) $usage_limit > 0 ) {
-			$payload['purchaseLimit'] = (int) $usage_limit;
+		if ( null !== $purchase_limit ) {
+			$payload['purchaseLimit'] = $purchase_limit;
 		}
 
 		return $payload;

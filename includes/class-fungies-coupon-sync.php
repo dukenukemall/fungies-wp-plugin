@@ -22,6 +22,11 @@ class Fungies_Coupon_Sync {
 		$currency  = strtoupper( get_woocommerce_currency() );
 		$timezone  = self::resolve_timezone();
 		$remote    = self::index_remote_discounts( $client );
+		if ( is_wp_error( $remote ) ) {
+			return self::result( 0, 0, 0, array(
+				array( 'name' => 'remote-list', 'message' => $remote->get_error_message() ),
+			), $remote->get_error_message() );
+		}
 
 		$created = 0;
 		$updated = 0;
@@ -92,7 +97,10 @@ class Fungies_Coupon_Sync {
 		$take    = 100;
 		do {
 			$resp = $client->get_discounts( array( 'type' => 'code', 'take' => $take, 'skip' => $skip, 'withArchived' => 'false' ) );
-			if ( is_wp_error( $resp ) ) break;
+			if ( is_wp_error( $resp ) ) {
+				if ( 0 === $skip ) return $resp;
+				break;
+			}
 			$list = $resp['data']['discounts'] ?? array();
 			foreach ( $list as $d ) {
 				if ( ! empty( $d['discountCode'] ) ) $by_code[ strtolower( $d['discountCode'] ) ] = $d;

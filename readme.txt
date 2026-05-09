@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,11 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.2.1 =
+* Fix: Fungies API rejects `validFrom: 0` with "Number must be greater than or equal to 0" even though the spec lists 0 as valid. The coupon now sends the WooCommerce coupon's actual `date_created` timestamp (or current time as fallback) for `validFrom`, which is also more semantically correct.
+* Fix: `purchaseLimit` was always sent — its create-schema enum forbids `null`, so coupons without a usage limit failed validation. The field is now only included when the WooCommerce coupon has a usage limit set.
+* Fix: When `GET /v0/discounts/list` fails on the first page, the coupon sync now returns the API error instead of silently treating the remote index as empty (which could create duplicates on a transient outage).
 
 = 2.2.0 =
 * Feature: WooCommerce coupons are now synced to Fungies on every "Sync Now" run. Each coupon (`percent`, `fixed_cart`, `fixed_product`) is created or updated as a Fungies discount with the same code, amount, amount type, expiration date, and usage limit. The Sync panel reports a third "Coupons → Fungies" line with created / updated / error counts. Mapping is workspace-scoped (sandbox vs production) so toggling Sandbox Mode does not orphan the link, and re-running Sync skips coupons that are already in sync.
