@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.2.3
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.3.0 =
+* Feature: WooCommerce coupon codes applied at checkout are now forwarded to the Fungies hosted checkout via the `fngs-discount-code` query parameter, so the Fungies-side total automatically matches the WooCommerce-side total after discount. The first coupon code on the order is forwarded as-is — it is expected to match a Fungies discount code already synced via "Sync Now". No action needed on the Fungies dashboard side as long as the coupon was synced.
 
 = 2.2.3 =
 * Fix: `PATCH /v0/discounts/:id/update` rejected every coupon update with `id: Required` because the Fungies update schema demands `id` in the request body in addition to the URL path. The API client now injects the discount UUID into the body automatically.

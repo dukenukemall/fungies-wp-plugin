@@ -8,10 +8,24 @@ class Fungies_Checkout_URL_Builder {
 		if ( ! $checkout_url ) {
 			return $order->get_checkout_order_received_url();
 		}
-		return add_query_arg( array(
+		$args = array(
 			'fngs-user-email'       => $order->get_billing_email(),
 			'fngs-customer-country' => $order->get_billing_country() ? $order->get_billing_country() : '',
-		), $checkout_url );
+		);
+		$discount_code = self::resolve_discount_code( $order );
+		if ( $discount_code ) {
+			$args['fngs-discount-code'] = $discount_code;
+		}
+		return add_query_arg( $args, $checkout_url );
+	}
+
+	private static function resolve_discount_code( $order ) {
+		$codes = method_exists( $order, 'get_coupon_codes' ) ? (array) $order->get_coupon_codes() : array();
+		if ( empty( $codes ) ) return '';
+		$first = (string) reset( $codes );
+		if ( '' === $first ) return '';
+		self::log( sprintf( 'Order #%d applying discount code "%s" to Fungies checkout URL.', $order->get_id(), $first ) );
+		return $first;
 	}
 
 	private static function resolve( $order ) {
