@@ -50,20 +50,27 @@ class Fungies_Coupon_Mapper {
 	}
 
 	public static function diff_for_update( array $payload, array $remote ) {
-		$keys = array(
-			'name', 'discountCode', 'amount', 'amountType',
-			'validUntil', 'purchaseLimit', 'status', 'currency',
-		);
-		$changed = false;
-		foreach ( $keys as $k ) {
-			$local  = $payload[ $k ] ?? null;
-			$remoteVal = $remote[ $k ] ?? null;
-			if ( 'amount' === $k ) {
-				if ( (float) $local !== (float) $remoteVal ) { $changed = true; break; }
-			} elseif ( $local != $remoteVal ) {
-				$changed = true; break;
-			}
+		$simple_keys = array( 'name', 'discountCode', 'amountType', 'status', 'currency' );
+		foreach ( $simple_keys as $k ) {
+			if ( (string) ( $payload[ $k ] ?? '' ) !== (string) ( $remote[ $k ] ?? '' ) ) return true;
 		}
-		return $changed;
+
+		$local_amount  = (float) ( $payload['amount'] ?? 0 );
+		$remote_amount = (float) ( $remote['amount'] ?? 0 );
+		if ( 'fixed' === ( $payload['amountType'] ?? '' ) ) {
+			$decimals     = function_exists( 'wc_get_price_decimals' ) ? (int) wc_get_price_decimals() : 2;
+			$local_amount = round( $local_amount * pow( 10, $decimals ) );
+		}
+		if ( $local_amount !== $remote_amount ) return true;
+
+		$local_until  = isset( $payload['validUntil'] ) && $payload['validUntil'] ? (int) $payload['validUntil'] : null;
+		$remote_until = isset( $remote['validUntil'] ) && $remote['validUntil'] ? (int) round( $remote['validUntil'] / 1000 ) : null;
+		if ( $local_until !== $remote_until ) return true;
+
+		$local_limit  = isset( $payload['purchaseLimit'] ) ? (int) $payload['purchaseLimit'] : null;
+		$remote_limit = isset( $remote['purchaseLimit'] ) && $remote['purchaseLimit'] ? (int) $remote['purchaseLimit'] : null;
+		if ( $local_limit !== $remote_limit ) return true;
+
+		return false;
 	}
 }

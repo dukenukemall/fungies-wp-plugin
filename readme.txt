@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.2.2
+Stable tag: 2.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,10 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.2.3 =
+* Fix: `PATCH /v0/discounts/:id/update` rejected every coupon update with `id: Required` because the Fungies update schema demands `id` in the request body in addition to the URL path. The API client now injects the discount UUID into the body automatically.
+* Fix: Coupon diff now correctly normalizes server-side amount storage. Fungies stores fixed-amount discounts in currency minor units (e.g. `1` USD becomes `"100"` in responses), so the previous diff always reported "different" and triggered an update on every sync. The mapper now multiplies fixed amounts by `wc_get_price_decimals()` before comparing, and converts `validUntil` from milliseconds to seconds before comparing.
 
 = 2.2.2 =
 * Fix: Coupon sync no longer aborts when the Fungies `GET /v0/discounts/list` endpoint returns 500 because of pre-existing rows with negative `validFrom` Dates (a known server-side timezone bug). The plugin now falls back to a row-by-row walk that skips broken pages, and primarily relies on the local `_fungies_pushed_discount_id` post meta to decide between create and update.

@@ -137,6 +137,7 @@ class Fungies_API_Client {
 	}
 
 	public function update_discount( $id, $body ) {
+		$body['id'] = $id;
 		return $this->patch( '/discounts/' . $id . '/update', $body );
 	}
 
