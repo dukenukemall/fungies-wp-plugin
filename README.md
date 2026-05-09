@@ -26,13 +26,17 @@
   │  │   Products    │◄─┼─────────┼──│   Products     │ │
   │  └───────────────┘  │         │  └────────────────┘ │
   │                     │         │                      │
+  │  ┌───────────────┐  │  Push   │  ┌────────────────┐ │
+  │  │   Coupons     │──┼─────────┼─►│   Discounts    │ │
+  │  └───────────────┘  │         │  └────────────────┘ │
+  │                     │         │                      │
   │  ┌───────────────┐  │ Webhook │  ┌────────────────┐ │
   │  │    Orders     │◄─┼─────────┼──│   Payments     │ │
   │  └───────────────┘  │         │  └────────────────┘ │
   │                     │         │                      │
   │  ┌───────────────┐  │Redirect │  ┌────────────────┐ │
   │  │   Customer    │──┼─────────┼─►│ Hosted Chkout  │ │
-  │  └───────────────┘  │         │  └────────────────┘ │
+  │  └───────────────┘  │  +code  │  └────────────────┘ │
   └─────────────────────┘         └─────────────────────┘
 ```
 
@@ -48,6 +52,9 @@ Fungies acts as your **Merchant of Record** — handling payments, taxes, and co
 | Sandbox / Staging Mode | Routes to `api.stage.fungies.net` |
 | Two-Way Product Sync | Pull Fungies offers → WC products **and** push WC products → Fungies OneTimePayment offers |
 | Auto-Sync on Save | Editing a WC product automatically updates the matching Fungies offer |
+| One-Way Coupon Sync | Push WC coupons → Fungies discounts (`percent`, `fixed_cart`, `fixed_product`) with matching code, amount, expiry, usage limit |
+| Instant Coupon Push on Save | `save_post_shop_coupon` hook creates / updates the Fungies discount the moment you save the coupon — no waiting for cron |
+| Discount Code Forwarding | WC coupon applied at checkout is appended to the Fungies hosted checkout URL via `fngs-discount-code`, so totals stay consistent |
 | Currency Validation | Auto-detects Fungies workspace currency; warns on mismatch |
 | Multi-Item Checkout | Multiple cart items create a Fungies Checkout Element so all line items appear on the hosted checkout page |
 | Detailed Sync Panel | Pull/push summaries + collapsible error list under the "Sync Now" button |
@@ -278,6 +285,80 @@ for each published WC product:
 
 ---
 
+## Coupon Sync (One-Way: WC → Fungies)
+
+WooCommerce coupons are mirrored as Fungies **discounts** so any code a customer applies in WC is recognized at the Fungies hosted checkout. The sync is intentionally one-way (WC is the source of truth).
+
+### Triggers
+
+| Trigger | When |
+|---|---|
+| **`save_post_shop_coupon` hook** | The instant you save a coupon in `Marketing → Coupons` (debounced 5 s via transient lock) |
+| **Sync Now button** | Catches anything that didn't propagate (e.g. transient API outage during save) |
+| **WP-Cron** | Hourly safety net (`fungies_product_sync_cron`) — runs the full Sync Now pass |
+| **`before_delete_post`** | Clears the workspace-scoped Fungies ID meta so re-creating a coupon with the same code creates a fresh Fungies discount |
+
+### Field mapping
+
+| WooCommerce coupon | Fungies discount | Notes |
+|---|---|---|
+| `code` | `discountCode`, `name` | Forwarded as-is, case-preserved |
+| `discount_type = percent` | `amountType = percentage` | `amount` sent as the percent value (e.g. `10`) |
+| `discount_type = fixed_cart` / `fixed_product` | `amountType = fixed` | `amount` sent in major currency units (e.g. `1` USD) |
+| `amount` | `amount` | Server stores fixed amounts in minor units (`1` USD → `"100"`) — diff is currency-aware |
+| `date_expires` | `validUntil` | Sent as a Unix-seconds timestamp |
+| `usage_limit` | `purchaseLimit` | Omitted when no limit is set on the WC coupon |
+| `date_created` | `validFrom` | Always sent as a positive timestamp |
+| WC store currency (`get_woocommerce_currency()`) | `currency` | Required by the Fungies API |
+| `post_status = publish` | `status = active` | Anything else (`draft`, `pending`, `private`) → `inactive` |
+
+Unsupported coupon types (anything other than `percent`, `fixed_cart`, `fixed_product`) are skipped with a log entry — they wouldn't have a meaningful Fungies counterpart.
+
+### Local mapping
+
+The pushed Fungies discount UUID is stored on the WC coupon post as a **workspace-scoped** post meta key:
+
+```
+_fungies_pushed_discount_id__<sha256(secret_key)[0..11]>
+```
+
+This means toggling Sandbox ↔ Production never mixes IDs across workspaces. Each environment maintains its own mapping cleanly.
+
+### Sync algorithm (per coupon)
+
+```
+build payload from WC coupon
+discount_id = local post meta (workspace-scoped)
+
+if discount_id:
+    diff payload vs. last-known remote shape (currency-aware for fixed amounts)
+    if no diff → skip (status: unchanged)
+    PATCH /v0/discounts/{id}/update with payload + id in body
+    on 404 / "not found" → clear local meta, fall through to create
+    on success → status: updated
+else:
+    POST /v0/discounts/create
+    store returned UUID in workspace-scoped meta
+    status: created
+```
+
+### Checkout-side: forwarding the applied code
+
+When the customer applies a coupon at the WC checkout and is redirected to Fungies, the URL builder appends the first applied coupon code:
+
+```
+…/checkout/<offer-id>?fngs-user-email=…&fngs-customer-country=…&fngs-discount-code=<code>
+```
+
+Fungies looks up the discount by `discountCode` and applies it on the hosted checkout, so the post-discount total matches what the customer saw on WC. Combined with the instant `save_post_shop_coupon` push, the Fungies side is always in sync by the time the customer reaches checkout.
+
+### Resilience
+
+- Tolerates transient `GET /v0/discounts/list` 500s by walking pages one at a time and primarily relying on local post-meta mapping.
+- Diff comparison normalizes server-side amount storage (Fungies stores fixed amounts in currency minor units) and unit drift (`validUntil` is returned in milliseconds, sent in seconds) so the plugin doesn't trigger pointless `updated` reports.
+
+---
+
 ## Checkout Flow
 
 ```
@@ -334,6 +415,7 @@ No API call is needed — Fungies exposes a deterministic single-offer hosted ch
 <store_url>/checkout/<offer_id>
   ?fngs-user-email=<billing_email>
   &fngs-customer-country=<billing_country>
+  &fngs-discount-code=<applied_coupon_code>   ← appended only when a WC coupon is applied (v2.3.0+)
 ```
 
 Example:
@@ -342,6 +424,7 @@ Example:
 https://azzeki.com/checkout/d8ef9d66-7d5f-4c30-88d6-4ff8fd612b88
   ?fngs-user-email=keviolf%40gmail.com
   &fngs-customer-country=PL
+  &fngs-discount-code=percent10
 ```
 
 #### Multiple offers (2+, or qty > 1)
@@ -365,6 +448,7 @@ The response's `data.checkoutElement.id` is stored on the WC order as `_fungies_
 <store_url>/checkout-element/<element_id>
   ?fngs-user-email=<billing_email>
   &fngs-customer-country=<billing_country>
+  &fngs-discount-code=<applied_coupon_code>   ← appended only when a WC coupon is applied (v2.3.0+)
 ```
 
 Example:
@@ -373,6 +457,7 @@ Example:
 https://azzeki.com/checkout-element/e3e1e78d-c31a-41f9-a058-b1ad7c9acbb9
   ?fngs-user-email=keviolf%40gmail.com
   &fngs-customer-country=PL
+  &fngs-discount-code=percent10
 ```
 
 When the customer lands there, Fungies promotes the element into a checkout session and the URL becomes `…/checkout-element/<element_id>/checkout/<session_id>` — both products are visible in the order summary on the hosted page.
@@ -462,12 +547,44 @@ A: Only **OneTimePayment** products and their offers are synced. Other product t
 **Q: How often do products sync automatically?**
 A: Every hour via WP Cron. You can also trigger a manual sync anytime from the settings page.
 
+**Q: What about coupons?**
+A: WooCommerce coupons (`percent`, `fixed_cart`, `fixed_product`) are pushed to Fungies as discounts. Direction is one-way: WC → Fungies. The push is **instant** on every coupon save (no waiting for cron) and the same code path runs on Sync Now and the hourly cron as a safety net.
+
+**Q: How does the discount actually get applied at the Fungies checkout?**
+A: When the customer applies a coupon at the WC checkout, the redirect URL to Fungies is appended with `&fngs-discount-code=<code>`. Fungies looks up the discount by code (already synced via the plugin) and applies it on the hosted checkout, so the totals match across both checkouts.
+
 **Q: How do I test without processing real payments?**
 A: Enable **Sandbox Mode**, use staging keys from [app.stage.fungies.net](https://app.stage.fungies.net), and pay with [Stripe test cards](https://docs.stripe.com/testing?testing-method=card-numbers).
 
 ---
 
 ## Changelog
+
+### 2.3.1
+- **Added:** Instant coupon push on save via the `save_post_shop_coupon` hook. New / edited WC coupons reach Fungies within ~500 ms instead of waiting for the next Sync Now or hourly cron.
+- **Added:** `before_delete_post` hook clears the workspace-scoped `_fungies_pushed_discount_id__<hash>` meta when a coupon is deleted, so re-creating one with the same code creates a fresh Fungies discount instead of trying to update a stale ID.
+
+### 2.3.0
+- **Added:** Applied WC coupon code is forwarded to the Fungies hosted checkout via `&fngs-discount-code=<code>`. Fungies auto-applies the matching synced discount, so the total customers see on Fungies matches what they saw on WC.
+
+### 2.2.3
+- **Fixed:** `PATCH /v0/discounts/{id}/update` was rejected with `id: Required` because the Fungies update schema demands `id` in the request body in addition to the URL path. The API client now injects the discount UUID into the body.
+- **Fixed:** Coupon diff now normalizes server-side amount storage (Fungies stores fixed amounts in currency minor units — e.g. `1` USD becomes `"100"`) and converts `validUntil` from milliseconds to seconds. No more spurious "updated" reports on every sync.
+
+### 2.2.2
+- **Fixed:** Coupon sync no longer aborts when `GET /v0/discounts/list` returns 500 because of pre-existing rows with negative `validFrom` Dates. The plugin now falls back to a row-by-row walk that skips broken pages and primarily relies on the local `_fungies_pushed_discount_id` post meta to decide between create and update.
+- **Fixed:** If `update_discount` returns "not found" (e.g., the Fungies discount was archived/deleted manually), the plugin clears the stale local mapping and creates a fresh discount instead of erroring.
+
+### 2.2.1
+- **Fixed:** `validFrom` now uses the WC coupon's actual `date_created` Unix timestamp instead of `0`. The Fungies API runtime validator rejected `0` despite the spec listing it as valid, and the server-side `setTimeToStartOfPeriod` call could produce a negative Date in non-UTC server timezones.
+- **Fixed:** `purchaseLimit` is now omitted from the create payload when no usage limit is set on the WC coupon (the create schema does not accept `null`).
+- **Fixed:** When `GET /v0/discounts/list` fails on the first page, the coupon sync now returns the API error instead of silently treating the remote index as empty.
+
+### 2.2.0
+- **Added:** WooCommerce → Fungies coupon sync. Each WC coupon (`percent`, `fixed_cart`, `fixed_product`) is mirrored as a Fungies discount with the same code, amount, amount type, expiration date, and usage limit. Runs on every Sync Now and the hourly cron.
+- **Added:** "Coupons → Fungies" row in the Sync Now result panel, with created / updated / error counts and an inline collapsible error list.
+- **Added:** Mapping is workspace-scoped (`_fungies_pushed_discount_id__<workspace-hash>` post meta), so toggling Sandbox Mode does not orphan the link.
+- **Added:** Three new Fungies API endpoints in the client: `GET /v0/discounts/list`, `POST /v0/discounts/create`, `PATCH /v0/discounts/{id}/update`.
 
 ### 2.1.7
 - **Fixed:** Push to Fungies now recovers from "Product not found" errors (e.g. after switching from staging to production API keys). Stale Fungies product/offer IDs are cleared and the product is recreated in the current workspace.
