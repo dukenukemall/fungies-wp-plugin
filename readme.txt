@@ -7,7 +7,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.3.0
+Stable tag: 2.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -226,6 +226,10 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 4. Fungies checkout option at the WooCommerce checkout page
 
 == Changelog ==
+
+= 2.3.1 =
+* Feature: Coupons are now pushed to Fungies **the moment they are saved** in WooCommerce, mirroring how products already work. Hook `save_post_shop_coupon` runs `Fungies_Coupon_Sync::on_coupon_saved`, which creates or updates the corresponding Fungies discount immediately — no need to wait for the hourly cron or click "Sync Now". Skipped silently for autosaves and revisions, debounced via a 5-second transient lock per coupon.
+* Feature: Deleting a coupon (`before_delete_post`) now clears its workspace-scoped `_fungies_pushed_discount_id__<hash>` post meta, so re-creating a coupon with the same code creates a fresh Fungies discount instead of trying to update a stale ID.
 
 = 2.3.0 =
 * Feature: WooCommerce coupon codes applied at checkout are now forwarded to the Fungies hosted checkout via the `fngs-discount-code` query parameter, so the Fungies-side total automatically matches the WooCommerce-side total after discount. The first coupon code on the order is forwarded as-is — it is expected to match a Fungies discount code already synced via "Sync Now". No action needed on the Fungies dashboard side as long as the coupon was synced.

@@ -44,6 +44,7 @@ class Fungies_Loader {
 	private function init_hooks() {
 		Fungies_Admin_Settings::init();
 		Fungies_Product_Sync::init();
+		Fungies_Coupon_Sync::init();
 		Fungies_Checkout::init();
 		Fungies_Webhook_Handler::init();
 

@@ -3,6 +3,38 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Fungies_Coupon_Sync {
 
+	public static function init() {
+		add_action( 'save_post_shop_coupon', array( __CLASS__, 'on_coupon_saved' ), 20, 3 );
+		add_action( 'before_delete_post', array( __CLASS__, 'on_coupon_deleted' ), 20, 1 );
+	}
+
+	public static function on_coupon_saved( $post_id, $post = null, $update = null ) {
+		$post_id = (int) $post_id;
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) return;
+		if ( defined( 'DOING_AJAX' ) && DOING_AJAX && ! current_user_can( 'manage_woocommerce' ) ) return;
+		if ( get_transient( "fungies_coupon_lock_$post_id" ) ) return;
+		set_transient( "fungies_coupon_lock_$post_id", 1, 5 );
+
+		if ( ! class_exists( 'WC_Coupon' ) ) return;
+		$coupon = new WC_Coupon( $post_id );
+		if ( ! $coupon->get_code() ) return;
+		if ( ! Fungies_Coupon_Mapper::is_supported( $coupon ) ) {
+			self::log( sprintf( 'Skipping push for coupon %s — type %s not supported.', $coupon->get_code(), $coupon->get_discount_type() ) );
+			return;
+		}
+
+		$client   = new Fungies_API_Client();
+		$currency = strtoupper( get_woocommerce_currency() );
+		$timezone = self::resolve_timezone();
+		$res      = self::sync_one( $client, $coupon, $currency, $timezone, array( 'by_code' => array(), 'by_id' => array() ) );
+		self::log( sprintf( 'Instant push [%s]: %s%s', $coupon->get_code(), $res['status'], isset( $res['message'] ) ? ' — ' . $res['message'] : '' ), 'error' === ( $res['status'] ?? '' ) ? 'warning' : 'info' );
+	}
+
+	public static function on_coupon_deleted( $post_id ) {
+		if ( 'shop_coupon' !== get_post_type( $post_id ) ) return;
+		delete_post_meta( (int) $post_id, Fungies_Workspace_Meta::discount_meta_key() );
+	}
+
 	public static function sync( Fungies_API_Client $client ) {
 		if ( ! function_exists( 'wc_get_coupon_id_by_code' ) ) {
 			return self::result( 0, 0, 0, array(), 'WooCommerce coupons unavailable.' );
