@@ -10,8 +10,21 @@ class Fungies_Webhook_Handler {
 
 	public static function register_route() {
 		register_rest_route( 'fungies/v1', '/webhook', array(
-			'methods'             => 'POST',
-			'callback'            => array( __CLASS__, 'handle_request' ),
+			'methods'  => 'POST',
+			'callback' => array( __CLASS__, 'handle_request' ),
+			/*
+			 * Intentionally public: this endpoint receives signed webhook
+			 * requests from the Fungies platform, which has no WordPress
+			 * user/cookie/nonce context. Authentication is performed inside
+			 * `handle_request()` via HMAC-SHA256 signature verification of the
+			 * raw body against the configured webhook secret (see
+			 * `verify_signature()`), with timing-safe `hash_equals()` comparison
+			 * and outright rejection when the secret is not configured.
+			 * Replay protection is enforced via the `idempotencyKey` transient
+			 * cache. Returning `__return_true` here defers all authorization
+			 * to that signature check, which is the only mechanism the remote
+			 * service can satisfy.
+			 */
 			'permission_callback' => '__return_true',
 		) );
 	}

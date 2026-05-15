@@ -146,6 +146,12 @@ class Fungies_API_Client {
 			return;
 		}
 
+		// Verbose request/response dumps are opt-in. Errors and warnings are
+		// always recorded so genuine API failures remain diagnosable.
+		if ( 'info' === $level && ! Fungies_Admin_Settings::is_debug_logging_enabled() ) {
+			return;
+		}
+
 		$logger = wc_get_logger();
 		$logger->log( $level, $message, array( 'source' => 'fungies' ) );
 	}

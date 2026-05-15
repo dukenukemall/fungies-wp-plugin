@@ -7,11 +7,6 @@
   var wpHtmlEntities = window.wp && window.wp.htmlEntities;
 
   if ( ! wcBlocksRegistry || ! wcSettings || ! wpElement ) {
-    console.error( "[Fungies] Block checkout globals missing:", {
-      wcBlocksRegistry: !! wcBlocksRegistry,
-      wcSettings: !! wcSettings,
-      wpElement: !! wpElement,
-    } );
     return;
   }
 
@@ -19,7 +14,6 @@
   var settings = wcSettings.getSetting( "fungies_data", null );
 
   if ( ! settings ) {
-    console.error( "[Fungies] fungies_data not found in wcSettings — is_active() likely returned false" );
     return;
   }
 
@@ -61,6 +55,4 @@
       features: features,
     },
   } );
-
-  console.log( "[Fungies] Payment method registered for block checkout", { features: features } );
 } )();

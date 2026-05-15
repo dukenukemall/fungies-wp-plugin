@@ -1,13 +1,12 @@
 === Fungies for WooCommerce ===
 Contributors: fungies
-Donate link: https://fungies.io
 Tags: woocommerce, payments, checkout, digital products
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.3.1
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,7 +41,7 @@ You keep full control of your storefront. Fungies takes care of the hard parts �
 * **Secure Webhooks** — All incoming webhooks are verified with HMAC-SHA256 signatures and protected against duplicate processing
 * **WooCommerce Blocks Compatible** — Works with both the classic checkout and the new WooCommerce block-based checkout
 * **HPOS Compatible** — Fully compatible with WooCommerce High-Performance Order Storage (custom order tables)
-* **Detailed Logging** — Full audit trail in WooCommerce → Status → Logs for easy debugging
+* **Opt-In Debug Logging** — Toggle verbose request/response logging in WooCommerce → Status → Logs (source: `fungies`). Errors and warnings are always logged; verbose dumps are off by default to keep log files small and avoid storing third-party API payloads unless you're troubleshooting.
 * **Dashboard Widget** — See your sync status at a glance from the WordPress dashboard
 
 = Why Fungies? =
@@ -218,14 +217,18 @@ When a payment succeeds, the plugin stores the Fungies order ID, order number, p
 
 Yes. The plugin is fully compatible with both the classic WooCommerce checkout and the new block-based cart and checkout experience.
 
-== Screenshots ==
-
-1. Plugin settings page in WooCommerce → Settings → Fungies
-2. Product sync status on the WordPress dashboard widget
-3. Fungies order metadata displayed on the WooCommerce order edit screen
-4. Fungies checkout option at the WooCommerce checkout page
-
 == Changelog ==
+
+= 2.4.0 =
+* Security: Hardened the Fungies Store URL setting — the field is now an `<input type="url">` and saves through `esc_url_raw`, plus the runtime read site re-validates with `esc_url_raw` + `wp_http_validate_url` and rejects anything other than `http`/`https` schemes before building a customer redirect.
+* Security: Added an HTTPS host allowlist (`fungies.io`, `fungies.net`) before sideloading product images via `media_sideload_image`, mitigating SSRF risk from third-party image URLs. Extensible via the `fungies_image_host_allowlist` filter.
+* Privacy: Verbose API request/response logging is now opt-in via a new **WooCommerce → Settings → Fungies → Debug Logging** checkbox. Errors and warnings are still logged unconditionally so genuine failures remain diagnosable; verbose dumps are off by default to keep log files small and avoid storing third-party API payloads unless troubleshooting.
+* i18n: Wrapped two previously-untranslated admin AJAX error strings in `__()` with translator comments and numbered placeholders.
+* Cleanup: Removed `console.log` / `console.error` calls from the front-end Blocks checkout JS so the customer's browser console stays clean.
+* Docs: Inline rationale comment added above the webhook REST route's `permission_callback => '__return_true'` explaining the HMAC-SHA256 signature verification, timing-safe comparison, and idempotency replay protection that act as the real auth.
+* Docs: Older changelog entries (2.1.x, 2.0.x, 1.x) moved to `changelog.txt` per WP.org guidelines, keeping the readme focused on the current and previous major.
+* Build: `.gitattributes` now `export-ignore`s `README.md`, `build.ps1`, and `fungies-*.zip` so the shipped plugin zip contains only runtime files.
+* Readme: Removed obsolete `Donate link` and the `Screenshots` section (no screenshot assets shipped).
 
 = 2.3.1 =
 * Feature: Coupons are now pushed to Fungies **the moment they are saved** in WooCommerce, mirroring how products already work. Hook `save_post_shop_coupon` runs `Fungies_Coupon_Sync::on_coupon_saved`, which creates or updates the corresponding Fungies discount immediately — no need to wait for the hourly cron or click "Sync Now". Skipped silently for autosaves and revisions, debounced via a 5-second transient lock per coupon.
@@ -251,128 +254,18 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 = 2.2.0 =
 * Feature: WooCommerce coupons are now synced to Fungies on every "Sync Now" run. Each coupon (`percent`, `fixed_cart`, `fixed_product`) is created or updated as a Fungies discount with the same code, amount, amount type, expiration date, and usage limit. The Sync panel reports a third "Coupons → Fungies" line with created / updated / error counts. Mapping is workspace-scoped (sandbox vs production) so toggling Sandbox Mode does not orphan the link, and re-running Sync skips coupons that are already in sync.
 
-= 2.1.11 =
-* Fix: Customers returning from Fungies hosted checkout on production now reliably land on the WooCommerce order-received ("thank you") page instead of being bounced back to the checkout/cart. Root cause was a race between the Fungies `payment_success` webhook and the customer's redirect: production webhooks fire fast enough that by the time the user lands on `?wc-api=fungies_return`, the order has already moved from `pending` to `processing`, and the old fallback only matched `pending` orders.
-* Added `Fungies_Return_Resolver` with three layered recovery strategies, in order of reliability:
-  1. WC session — the WC order id is now stashed in the session at redirect time, so the return handler can recover it deterministically without depending on the webhook.
-  2. Broadened email fallback — now matches `pending`, `on-hold`, `processing`, `completed` instead of `pending` only.
-  3. Brief poll (~3s) for the meta or matching order, in case the webhook is landing right at that moment.
-* `_fungies_order_id` post meta is now linked at return time using the `fngs-order-id` URL param, so subsequent webhook calls always match the existing order via meta and never create duplicate orphan orders.
-
-= 2.1.10 =
-* Build: Added `build.ps1` that produces the WordPress-ready zip via `git archive` and refuses to ship if any entry uses backslash separators. Locks in the v2.1.9 packaging fix so we can never regress to the v2.1.8 broken-zip bug again.
-* No runtime code changes — same plugin code as v2.1.9.
-
-= 2.1.9 =
-* Fixed: Plugin zip path separators (forward slashes) for Linux-based WordPress hosts. The 2.1.8 zip was built with PowerShell `Compress-Archive` which uses backslashes inside the zip, causing "Plugin file does not exist" errors on Linux hosts. v2.1.9 ships the same code as 2.1.8 in a properly-built zip.
-
-= 2.1.8 =
-* Fixed: Toggling Sandbox Mode (or rotating API keys) no longer creates duplicate products in the destination workspace. Pushed product/offer IDs are now stored per workspace (`_fungies_pushed_*__<workspace_hash>`), so the original mapping in the previous workspace is preserved on environment switch.
-* Added: `Fungies_Workspace_Meta` helper that scopes all push-side post meta by a hash of the active secret key.
-* Migration: Legacy unscoped `_fungies_pushed_*` meta is read as a fallback and silently migrated to the active workspace on the next successful push.
-* Updated: `Sync Now` pull-deduplication and one-time cleanup queries now consider both legacy and workspace-scoped meta keys.
-
-= 2.1.7 =
-* Fixed: Push to Fungies now recovers from "Product not found" errors (e.g. after switching from staging to production API keys). Stale Fungies product/offer IDs are cleared and the product is recreated in the current workspace.
-* Fixed: When a pushed offer is missing in the current workspace but the product still exists, the offer is recreated under the existing product instead of erroring out.
-* Refactor: Extracted product/offer body builders into `Fungies_Product_Body` to keep the push class focused.
-
-= 2.1.6 =
-* Fixed: Multi-item carts now create a Fungies Checkout Element so all line items appear on the hosted checkout page (previously only the first item was sent)
-* Fixed: Products pushed from WooCommerce to Fungies (`_fungies_pushed_offer_id`) are now resolved at checkout — they were silently skipped before
-* Added: New `POST /v0/elements/checkout/create` integration in the API client
-* Added: WC order metadata `_fungies_checkout_element_id` for traceability of multi-item checkouts
-* Refactor: Extracted hosted checkout URL building into `Fungies_Checkout_URL_Builder`
-
-= 2.1.5 =
-* Fixed: Duplicate WooCommerce products created when pulling offers we previously pushed from WooCommerce
-* Added: One-time cleanup that removes existing duplicate WC products on the next sync
-* Added: Pull phase now skips offers with a `_fungies_pushed_offer_id` to prevent re-import
-
-= 2.1.4 =
-* Fixed: HTTP 400 "Invalid input" on Fungies product/offer PATCH — the `id` field is now included in the PATCH request body in addition to the URL path
-* Improved: Verbose request body logging in the API client for easier troubleshooting
-
-= 2.1.3 =
-* Fixed: HTTP 500 on `POST /v0/products/create` by sending the required `status: ACTIVE` field
-* Fixed: Offer prices are now sent in major currency units (no more accidental ×100 multiplication)
-
-= 2.1.2 =
-* Fixed: Plugin zip path separators (forward slashes) for Linux-based WordPress hosts
-* Fixed: Versioned top-level folder inside the zip to avoid "destination folder already exists" errors
-
-= 2.1.1 =
-* Fixed: Fatal error on plugin install on some Linux hosts caused by Windows-style path separators in the zip
-
-= 2.1.0 =
-* Added: Two-way product sync — push WooCommerce products to Fungies as OneTimePayment offers (name, description, price, featured image)
-* Added: Auto-push to Fungies when a WooCommerce product is saved/updated
-* Added: Currency auto-detection of the Fungies workspace currency with mismatch validation
-* Added: Detailed sync result panel under the "Sync Now" button (pull/push summaries + collapsible error list)
-* Added: Loop guard so editing a Fungies-imported product in WooCommerce does not push back to Fungies
-
-= 2.0.3 =
-* Security: Webhook handler now rejects requests when webhook secret is not configured
-* Security: Escape and sanitize currency code in storefront price output
-* Security: Use esc_html(esc_url()) for non-href URL display in admin settings
-
-= 2.0.2 =
-* Added third-party service disclosure for WordPress.org guideline compliance
-* Fixed admin notice to use modern WordPress notice pattern
-* Removed unused template and script files
-
-= 2.0.1 =
-* Improved webhook signature validation
-* Enhanced order sync reliability
-* Bug fixes and stability improvements
-
-= 2.0.0 =
-* Major rewrite with improved architecture
-* Added WooCommerce Blocks checkout support
-* Added HPOS (High-Performance Order Storage) compatibility
-* Added dashboard sync status widget
-* Added subscription event handling (create, renew, cancel)
-* Added automatic order creation from webhooks
-* Added idempotency protection for duplicate webhook events
-* Improved product sync with hourly cron scheduling
-* Improved currency handling for block-based checkout
-* Enhanced admin UI with connection test and manual sync
-
-= 1.0.0 =
-* Initial release
-* Product sync from Fungies to WooCommerce
-* Hosted checkout redirect
-* Webhook-based order completion
-* Sandbox mode support
+For changelog entries from earlier releases (2.1.x, 2.0.x, 1.x), see `changelog.txt` in the plugin root.
 
 == Upgrade Notice ==
 
-= 2.1.7 =
-Fixes "Product not found" errors when pushing to a different Fungies workspace (e.g. switching staging → production). Recommended update.
+= 2.4.0 =
+Security hardening (URL validation, image SSRF allowlist), opt-in debug logging, i18n fixes, and cleaner front-end JS. Recommended update.
 
-= 2.1.6 =
-Fixes multi-item Fungies hosted checkout — all cart products are now sent to Fungies. Recommended update.
+= 2.3.1 =
+Coupons are now pushed to Fungies the moment they are saved in WooCommerce, instead of waiting for the hourly cron or a manual sync. Recommended update.
 
-= 2.1.5 =
-Fixes duplicate WooCommerce products that appeared on sync. Recommended update.
+= 2.3.0 =
+WooCommerce coupon codes applied at checkout are now forwarded to the Fungies hosted checkout, so totals stay in sync after discount.
 
-= 2.1.4 =
-Fixes Fungies product/offer update errors (HTTP 400 Invalid input).
-
-= 2.1.3 =
-Fixes Fungies product creation errors and price unit handling.
-
-= 2.1.0 =
-Adds two-way product sync — WooCommerce products are pushed to Fungies. Make sure your WooCommerce currency matches your Fungies workspace currency before syncing.
-
-= 2.0.3 =
-Security hardening: webhook signature enforcement, escaping fixes.
-
-= 2.0.2 =
-WordPress.org guideline compliance: third-party service disclosure, admin notice fix, cleanup.
-
-= 2.0.1 =
-Recommended update with improved webhook handling and bug fixes.
-
-= 2.0.0 =
-Major update with WooCommerce Blocks and HPOS support. Review your settings after updating.
+= 2.2.0 =
+Adds WooCommerce → Fungies coupon sync. Run "Sync Now" once after updating to push your existing coupons.

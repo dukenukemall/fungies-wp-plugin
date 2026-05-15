@@ -353,6 +353,11 @@ class Fungies_Product_Sync {
 	}
 
 	private static function set_product_image( $product_id, $image_url ) {
+		if ( ! self::is_image_url_allowed( $image_url ) ) {
+			self::log( sprintf( 'Refused to sideload product image from disallowed host: %s', $image_url ), 'warning' );
+			return;
+		}
+
 		if ( ! function_exists( 'media_sideload_image' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 			require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -362,6 +367,73 @@ class Fungies_Product_Sync {
 		if ( ! is_wp_error( $attachment_id ) ) {
 			set_post_thumbnail( $product_id, $attachment_id );
 		}
+	}
+
+	/**
+	 * Allowlist gate for outbound image fetches.
+	 *
+	 * Mitigates SSRF risk: `media_sideload_image` (via `download_url` →
+	 * `wp_safe_remote_get`) blocks loopback IPs by default but does not
+	 * restrict the destination host. Because we only ever expect images from
+	 * the Fungies CDN, we hard-allowlist the two known parent domains and
+	 * require HTTPS.
+	 *
+	 * Site owners with a custom Fungies-hosted CDN can extend the allowlist
+	 * via the `fungies_image_host_allowlist` filter — they must opt in
+	 * explicitly rather than inherit a permissive default.
+	 *
+	 * @param string $image_url Raw URL as returned by the Fungies API.
+	 * @return bool True iff the URL is HTTPS and its host is on the allowlist.
+	 */
+	private static function is_image_url_allowed( $image_url ) {
+		$image_url = (string) $image_url;
+		if ( '' === $image_url ) {
+			return false;
+		}
+		$parts = wp_parse_url( $image_url );
+		if ( empty( $parts['scheme'] ) || empty( $parts['host'] ) ) {
+			return false;
+		}
+		if ( 'https' !== strtolower( $parts['scheme'] ) ) {
+			return false;
+		}
+
+		$host = strtolower( $parts['host'] );
+
+		/**
+		 * Filter the host suffixes from which Fungies product images may be
+		 * sideloaded. Each entry must be a bare domain suffix (no scheme, no
+		 * leading dot). Subdomains match automatically: an allowlist entry of
+		 * `fungies.io` permits `cdn.fungies.io` and `images.fungies.io`, but
+		 * does not permit `evilfungies.io`.
+		 *
+		 * @param string[] $allowed Default allowlist (production + staging).
+		 */
+		$allowed = (array) apply_filters( 'fungies_image_host_allowlist', array(
+			'fungies.io',
+			'fungies.net',
+		) );
+
+		foreach ( $allowed as $suffix ) {
+			if ( self::host_matches_suffix( $host, $suffix ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static function host_matches_suffix( $host, $suffix ) {
+		$suffix = strtolower( ltrim( (string) $suffix, '.' ) );
+		if ( '' === $suffix ) {
+			return false;
+		}
+		if ( $host === $suffix ) {
+			return true;
+		}
+		$dotted = '.' . $suffix;
+		// PHP 7.4-compatible suffix check (avoids `str_ends_with`).
+		return ( strlen( $host ) > strlen( $dotted ) )
+			&& ( substr( $host, -strlen( $dotted ) ) === $dotted );
 	}
 
 	private static function log( $message, $level = 'info' ) {

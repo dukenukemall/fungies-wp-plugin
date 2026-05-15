@@ -32,6 +32,13 @@ class Fungies_Admin_Settings {
 				'type'     => 'checkbox',
 				'default'  => 'no',
 			),
+			array(
+				'title'    => __( 'Debug Logging', 'fungies-wp' ),
+				'desc'     => __( 'Write verbose request/response bodies to <strong>WooCommerce → Status → Logs</strong> (source: <code>fungies</code>). Errors and warnings are always logged regardless of this setting. Enable only when troubleshooting — log files can grow quickly and contain product, coupon, and order data.', 'fungies-wp' ),
+				'id'       => self::OPTION_PREFIX . 'enable_debug_logging',
+				'type'     => 'checkbox',
+				'default'  => 'no',
+			),
 			array( 'type' => 'sectionend', 'id' => 'fungies_env_settings' ),
 
 			array(
@@ -117,7 +124,7 @@ class Fungies_Admin_Settings {
 				'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
 				'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
 				'id'          => self::OPTION_PREFIX . 'store_url',
-				'type'        => 'text',
+				'type'        => 'url',
 				'css'         => 'min-width: 400px;',
 				'placeholder' => 'https://yourname.app.fungies.io',
 			),
@@ -266,7 +273,11 @@ class Fungies_Admin_Settings {
 
 		if ( empty( $pub_key ) ) {
 			wp_send_json_error(
-				sprintf( 'No %s public key saved. Enter your key and click Save Changes first.', $env )
+				sprintf(
+					/* translators: %s: environment name (production or staging) */
+					__( 'No %s public key saved. Enter your key and click Save Changes first.', 'fungies-wp' ),
+					$env
+				)
 			);
 		}
 
@@ -277,8 +288,12 @@ class Fungies_Admin_Settings {
 			$key_preview = substr( $pub_key, 0, 8 ) . '...';
 			wp_send_json_error(
 				sprintf(
-					'%s — Make sure you hit Save Changes before testing the connection. [%s → %s, key: %s]',
-					$response->get_error_message(), $env, $host, $key_preview
+					/* translators: 1: API error message, 2: environment name, 3: API host, 4: public key preview */
+					__( '%1$s — Make sure you hit Save Changes before testing the connection. [%2$s → %3$s, key: %4$s]', 'fungies-wp' ),
+					$response->get_error_message(),
+					$env,
+					$host,
+					$key_preview
 				)
 			);
 		}
@@ -290,6 +305,10 @@ class Fungies_Admin_Settings {
 
 	public static function is_sandbox() {
 		return self::get_option( 'sandbox_mode', 'no' ) === 'yes';
+	}
+
+	public static function is_debug_logging_enabled() {
+		return self::get_option( 'enable_debug_logging', 'no' ) === 'yes';
 	}
 
 	public static function get_active_public_key() {

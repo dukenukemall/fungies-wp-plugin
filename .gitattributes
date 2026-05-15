@@ -4,3 +4,6 @@
 .cursor/ export-ignore
 assets/c__* export-ignore
 agent-transcripts/ export-ignore
+README.md export-ignore
+build.ps1 export-ignore
+fungies-*.zip export-ignore

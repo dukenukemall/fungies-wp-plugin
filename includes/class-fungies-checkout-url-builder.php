@@ -101,9 +101,18 @@ class Fungies_Checkout_URL_Builder {
 	}
 
 	private static function store_url() {
-		$url = Fungies_Admin_Settings::get_option( 'store_url', '' );
-		if ( empty( $url ) ) {
+		$raw = Fungies_Admin_Settings::get_option( 'store_url', '' );
+		if ( empty( $raw ) ) {
 			self::log( 'Fungies Store URL not configured. Go to WooCommerce → Settings → Fungies to set it.', 'error' );
+			return '';
+		}
+		// Defense in depth: even though the admin field uses `type: url` (which
+		// runs `esc_url_raw` on save), values can also arrive via DB imports,
+		// `wp option update`, or multisite duplication, so re-validate at read
+		// time before this string is used to build a customer redirect target.
+		$url = esc_url_raw( trim( (string) $raw ), array( 'http', 'https' ) );
+		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
+			self::log( sprintf( 'Fungies Store URL is invalid (rejected): "%s". Update it in WooCommerce → Settings → Fungies.', $raw ), 'error' );
 			return '';
 		}
 		return untrailingslashit( $url );
