@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,6 +219,11 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.4.1 =
+* Compliance: Added the `Requires Plugins: woocommerce` header introduced in WordPress 6.5. WordPress now refuses to activate the plugin unless WooCommerce is installed and active, and the WooCommerce dependency is shown in the Plugins screen.
+* i18n: Renamed the plugin text domain from `fungies-wp` to `fungies-for-woocommerce` (matching the plugin slug) across all 97 gettext calls and the plugin header. Required for the WordPress.org translation platform to pick up strings for community translation. Any custom `.po` / `.mo` files keyed off the old `fungies-wp` domain must be re-generated.
+* No runtime behaviour changes.
+
 = 2.4.0 =
 * Security: Hardened the Fungies Store URL setting — the field is now an `<input type="url">` and saves through `esc_url_raw`, plus the runtime read site re-validates with `esc_url_raw` + `wp_http_validate_url` and rejects anything other than `http`/`https` schemes before building a customer redirect.
 * Security: Added an HTTPS host allowlist (`fungies.io`, `fungies.net`) before sideloading product images via `media_sideload_image`, mitigating SSRF risk from third-party image URLs. Extensible via the `fungies_image_host_allowlist` filter.
@@ -257,6 +262,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 For changelog entries from earlier releases (2.1.x, 2.0.x, 1.x), see `changelog.txt` in the plugin root.
 
 == Upgrade Notice ==
+
+= 2.4.1 =
+WP.org compliance: declares WooCommerce as a `Requires Plugins` dependency and renames the text domain to match the plugin slug. Recommended.
 
 = 2.4.0 =
 Security hardening (URL validation, image SSRF allowlist), opt-in debug logging, i18n fixes, and cleaner front-end JS. Recommended update.

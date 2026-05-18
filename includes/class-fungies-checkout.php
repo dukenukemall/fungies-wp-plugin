@@ -59,21 +59,21 @@ class Fungies_Checkout {
 
 		if ( in_array( $status, array( 'completed', 'processing' ), true ) ) {
 			echo '<p class="woocommerce-info">';
-			esc_html_e( 'Your Fungies payment was successful! Thank you for your purchase.', 'fungies-wp' );
+			esc_html_e( 'Your Fungies payment was successful! Thank you for your purchase.', 'fungies-for-woocommerce' );
 			echo '</p>';
 			return;
 		}
 
 		if ( 'pending' === $status ) {
 			echo '<p class="woocommerce-info">';
-			esc_html_e( 'Your payment is being processed by Fungies. You will receive a confirmation email shortly.', 'fungies-wp' );
+			esc_html_e( 'Your payment is being processed by Fungies. You will receive a confirmation email shortly.', 'fungies-for-woocommerce' );
 			echo '</p>';
 			return;
 		}
 
 		if ( 'failed' === $status ) {
 			echo '<p class="woocommerce-error">';
-			esc_html_e( 'Your Fungies payment could not be completed. Please try again or contact support.', 'fungies-wp' );
+			esc_html_e( 'Your Fungies payment could not be completed. Please try again or contact support.', 'fungies-for-woocommerce' );
 			echo '</p>';
 		}
 	}

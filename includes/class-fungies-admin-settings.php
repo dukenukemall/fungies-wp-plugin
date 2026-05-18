@@ -14,27 +14,27 @@ class Fungies_Admin_Settings {
 	}
 
 	public static function add_settings_tab( $tabs ) {
-		$tabs['fungies'] = __( 'Fungies', 'fungies-wp' );
+		$tabs['fungies'] = __( 'Fungies', 'fungies-for-woocommerce' );
 		return $tabs;
 	}
 
 	public static function get_settings() {
 		return array(
 			array(
-				'title' => __( 'Environment', 'fungies-wp' ),
+				'title' => __( 'Environment', 'fungies-for-woocommerce' ),
 				'type'  => 'title',
 				'id'    => 'fungies_env_settings',
 			),
 			array(
-				'title'    => __( 'Sandbox Mode', 'fungies-wp' ),
-				'desc'     => __( 'Enable sandbox/test mode — routes all API calls to <code>api.stage.fungies.net</code>', 'fungies-wp' ),
+				'title'    => __( 'Sandbox Mode', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Enable sandbox/test mode — routes all API calls to <code>api.stage.fungies.net</code>', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'sandbox_mode',
 				'type'     => 'checkbox',
 				'default'  => 'no',
 			),
 			array(
-				'title'    => __( 'Debug Logging', 'fungies-wp' ),
-				'desc'     => __( 'Write verbose request/response bodies to <strong>WooCommerce → Status → Logs</strong> (source: <code>fungies</code>). Errors and warnings are always logged regardless of this setting. Enable only when troubleshooting — log files can grow quickly and contain product, coupon, and order data.', 'fungies-wp' ),
+				'title'    => __( 'Debug Logging', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Write verbose request/response bodies to <strong>WooCommerce → Status → Logs</strong> (source: <code>fungies</code>). Errors and warnings are always logged regardless of this setting. Enable only when troubleshooting — log files can grow quickly and contain product, coupon, and order data.', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'enable_debug_logging',
 				'type'     => 'checkbox',
 				'default'  => 'no',
@@ -42,30 +42,30 @@ class Fungies_Admin_Settings {
 			array( 'type' => 'sectionend', 'id' => 'fungies_env_settings' ),
 
 			array(
-				'title' => __( 'Production API Keys', 'fungies-wp' ),
+				'title' => __( 'Production API Keys', 'fungies-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Enter your <strong>production</strong> keys from <a href="https://app.fungies.io/devs/api-keys" target="_blank">Fungies Dashboard → Developers → API Keys</a>.', 'fungies-wp' ),
+				'desc'  => __( 'Enter your <strong>production</strong> keys from <a href="https://app.fungies.io/devs/api-keys" target="_blank">Fungies Dashboard → Developers → API Keys</a>.', 'fungies-for-woocommerce' ),
 				'id'    => 'fungies_prod_settings',
 			),
 			array(
-				'title'    => __( 'Public Key', 'fungies-wp' ),
-				'desc'     => __( 'Production public API key (starts with pub_)', 'fungies-wp' ),
+				'title'    => __( 'Public Key', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Production public API key (starts with pub_)', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'public_key',
 				'type'     => 'text',
 				'css'      => 'min-width: 400px;',
 				'custom_attributes' => array( 'data-env' => 'production' ),
 			),
 			array(
-				'title'    => __( 'Secret Key', 'fungies-wp' ),
-				'desc'     => __( 'Production secret API key (starts with sec_)', 'fungies-wp' ),
+				'title'    => __( 'Secret Key', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Production secret API key (starts with sec_)', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'secret_key',
 				'type'     => 'password',
 				'css'      => 'min-width: 400px;',
 				'custom_attributes' => array( 'data-env' => 'production' ),
 			),
 			array(
-				'title'    => __( 'Webhook Secret', 'fungies-wp' ),
-				'desc'     => __( 'Production webhook signature secret', 'fungies-wp' ),
+				'title'    => __( 'Webhook Secret', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Production webhook signature secret', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'webhook_secret',
 				'type'     => 'password',
 				'css'      => 'min-width: 400px;',
@@ -74,30 +74,30 @@ class Fungies_Admin_Settings {
 			array( 'type' => 'sectionend', 'id' => 'fungies_prod_settings' ),
 
 			array(
-				'title' => __( 'Staging API Keys', 'fungies-wp' ),
+				'title' => __( 'Staging API Keys', 'fungies-for-woocommerce' ),
 				'type'  => 'title',
-				'desc'  => __( 'Enter your <strong>staging</strong> keys from <a href="https://app.stage.fungies.net/devs/api-keys" target="_blank">Fungies Staging Dashboard → Developers → API Keys</a>.', 'fungies-wp' ),
+				'desc'  => __( 'Enter your <strong>staging</strong> keys from <a href="https://app.stage.fungies.net/devs/api-keys" target="_blank">Fungies Staging Dashboard → Developers → API Keys</a>.', 'fungies-for-woocommerce' ),
 				'id'    => 'fungies_staging_settings',
 			),
 			array(
-				'title'    => __( 'Staging Public Key', 'fungies-wp' ),
-				'desc'     => __( 'Staging public API key (starts with pub_)', 'fungies-wp' ),
+				'title'    => __( 'Staging Public Key', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Staging public API key (starts with pub_)', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'staging_public_key',
 				'type'     => 'text',
 				'css'      => 'min-width: 400px;',
 				'custom_attributes' => array( 'data-env' => 'staging' ),
 			),
 			array(
-				'title'    => __( 'Staging Secret Key', 'fungies-wp' ),
-				'desc'     => __( 'Staging secret API key (starts with sec_)', 'fungies-wp' ),
+				'title'    => __( 'Staging Secret Key', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Staging secret API key (starts with sec_)', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'staging_secret_key',
 				'type'     => 'password',
 				'css'      => 'min-width: 400px;',
 				'custom_attributes' => array( 'data-env' => 'staging' ),
 			),
 			array(
-				'title'    => __( 'Staging Webhook Secret', 'fungies-wp' ),
-				'desc'     => __( 'Staging webhook signature secret', 'fungies-wp' ),
+				'title'    => __( 'Staging Webhook Secret', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Staging webhook signature secret', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'staging_webhook_secret',
 				'type'     => 'password',
 				'css'      => 'min-width: 400px;',
@@ -106,23 +106,23 @@ class Fungies_Admin_Settings {
 			array( 'type' => 'sectionend', 'id' => 'fungies_staging_settings' ),
 
 			array(
-				'title' => __( 'Checkout Settings', 'fungies-wp' ),
+				'title' => __( 'Checkout Settings', 'fungies-for-woocommerce' ),
 				'type'  => 'title',
 				'id'    => 'fungies_checkout_settings',
 			),
 			array(
-				'title'    => __( 'Checkout Mode', 'fungies-wp' ),
-				'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-wp' ),
+				'title'    => __( 'Checkout Mode', 'fungies-for-woocommerce' ),
+				'desc'     => __( 'Customers are redirected to the Fungies hosted checkout page to complete payment.', 'fungies-for-woocommerce' ),
 				'id'       => self::OPTION_PREFIX . 'checkout_mode',
 				'type'     => 'select',
 				'options'  => array(
-					'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-wp' ),
+					'hosted' => __( 'Hosted Checkout (redirect)', 'fungies-for-woocommerce' ),
 				),
 				'default'  => 'hosted',
 			),
 			array(
-				'title'       => __( 'Fungies Store URL', 'fungies-wp' ),
-				'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-wp' ),
+				'title'       => __( 'Fungies Store URL', 'fungies-for-woocommerce' ),
+				'desc'        => __( 'Your Fungies store base URL. Find it in <strong>Fungies Dashboard → Go To Store</strong>.<br>Example: <code>https://yourname.app.fungies.io</code>', 'fungies-for-woocommerce' ),
 				'id'          => self::OPTION_PREFIX . 'store_url',
 				'type'        => 'url',
 				'css'         => 'min-width: 400px;',
@@ -138,10 +138,10 @@ class Fungies_Admin_Settings {
 		$webhook_url = rest_url( 'fungies/v1/webhook' );
 		$return_url  = Fungies_Checkout::get_return_url();
 		?>
-		<h2><?php esc_html_e( 'Connection & Sync', 'fungies-wp' ); ?></h2>
+		<h2><?php esc_html_e( 'Connection & Sync', 'fungies-for-woocommerce' ); ?></h2>
 		<table class="form-table">
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Active API Host', 'fungies-wp' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Active API Host', 'fungies-for-woocommerce' ); ?></th>
 				<td>
 					<code id="fungies-active-host">api.fungies.io</code>
 					<span id="fungies-sandbox-badge" style="color:#b26200;font-weight:bold;margin-left:8px;display:none;">⚠ SANDBOX</span>
@@ -149,23 +149,23 @@ class Fungies_Admin_Settings {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Webhook URL', 'fungies-wp' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Webhook URL', 'fungies-for-woocommerce' ); ?></th>
 				<td>
 					<code><?php echo esc_html( esc_url( $webhook_url ) ); ?></code>
 					<p class="description">
-						<?php esc_html_e( 'Paste this URL into Fungies Dashboard → Developers → Webhooks.', 'fungies-wp' ); ?>
+						<?php esc_html_e( 'Paste this URL into Fungies Dashboard → Developers → Webhooks.', 'fungies-for-woocommerce' ); ?>
 					</p>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Post-Purchase Redirect URL', 'fungies-wp' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Post-Purchase Redirect URL', 'fungies-for-woocommerce' ); ?></th>
 				<td>
 					<code><?php echo esc_html( esc_url( $return_url ) ); ?></code>
 					<p class="description">
 						<?php
 						printf(
 							wp_kses(
-								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameters <code>fngs-order-id</code> and <code>fngs-user-email</code> so Fungies appends the order ID and customer email to the redirect.', 'fungies-wp' ),
+								__( 'Paste this URL into <strong>Fungies Dashboard → Settings → Store → Checkout tab → Instant Redirect URL</strong>.<br>Then add the system parameters <code>fngs-order-id</code> and <code>fngs-user-email</code> so Fungies appends the order ID and customer email to the redirect.', 'fungies-for-woocommerce' ),
 								array( 'strong' => array(), 'br' => array(), 'code' => array() )
 							)
 						);
@@ -174,33 +174,33 @@ class Fungies_Admin_Settings {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Connection Test', 'fungies-wp' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Connection Test', 'fungies-for-woocommerce' ); ?></th>
 				<td>
 					<button type="button" class="button" id="fungies-test-connection">
-						<?php esc_html_e( 'Test Connection', 'fungies-wp' ); ?>
+						<?php esc_html_e( 'Test Connection', 'fungies-for-woocommerce' ); ?>
 					</button>
 					<span id="fungies-test-result" style="margin-left:10px;"></span>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Product Sync', 'fungies-wp' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Product Sync', 'fungies-for-woocommerce' ); ?></th>
 				<td>
 					<button type="button" class="button button-primary" id="fungies-sync-products">
-						<?php esc_html_e( 'Sync Now', 'fungies-wp' ); ?>
+						<?php esc_html_e( 'Sync Now', 'fungies-for-woocommerce' ); ?>
 					</button>
 					<span id="fungies-sync-result" style="margin-left:10px;"></span>
 					<div id="fungies-sync-result-panel" class="fungies-sync-panel" hidden>
 						<div class="fungies-sync-summary">
 							<p class="fungies-sync-row fungies-sync-pull">
-								<span class="fungies-sync-label"><?php esc_html_e( 'Pull from Fungies:', 'fungies-wp' ); ?></span>
+								<span class="fungies-sync-label"><?php esc_html_e( 'Pull from Fungies:', 'fungies-for-woocommerce' ); ?></span>
 								<strong class="fungies-sync-pull-text">—</strong>
 							</p>
 							<p class="fungies-sync-row fungies-sync-push">
-								<span class="fungies-sync-label"><?php esc_html_e( 'Push to Fungies:', 'fungies-wp' ); ?></span>
+								<span class="fungies-sync-label"><?php esc_html_e( 'Push to Fungies:', 'fungies-for-woocommerce' ); ?></span>
 								<strong class="fungies-sync-push-text">—</strong>
 							</p>
 							<p class="fungies-sync-row fungies-sync-coupons">
-								<span class="fungies-sync-label"><?php esc_html_e( 'Coupons → Fungies:', 'fungies-wp' ); ?></span>
+								<span class="fungies-sync-label"><?php esc_html_e( 'Coupons → Fungies:', 'fungies-for-woocommerce' ); ?></span>
 								<strong class="fungies-sync-coupons-text">—</strong>
 							</p>
 						</div>
@@ -213,7 +213,7 @@ class Fungies_Admin_Settings {
 					$last_sync = get_option( 'fungies_last_sync', '' );
 					if ( $last_sync ) {
 						echo '<p class="description" id="fungies-last-sync">';
-						printf( esc_html__( 'Last sync: %s', 'fungies-wp' ), esc_html( $last_sync ) );
+						printf( esc_html__( 'Last sync: %s', 'fungies-for-woocommerce' ), esc_html( $last_sync ) );
 						echo '</p>';
 					} else {
 						echo '<p class="description" id="fungies-last-sync" hidden></p>';
@@ -262,7 +262,7 @@ class Fungies_Admin_Settings {
 		check_ajax_referer( 'fungies_test_connection', 'nonce' );
 
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_send_json_error( __( 'Permission denied.', 'fungies-wp' ) );
+			wp_send_json_error( __( 'Permission denied.', 'fungies-for-woocommerce' ) );
 		}
 
 		$is_sandbox = self::is_sandbox();
@@ -275,7 +275,7 @@ class Fungies_Admin_Settings {
 			wp_send_json_error(
 				sprintf(
 					/* translators: %s: environment name (production or staging) */
-					__( 'No %s public key saved. Enter your key and click Save Changes first.', 'fungies-wp' ),
+					__( 'No %s public key saved. Enter your key and click Save Changes first.', 'fungies-for-woocommerce' ),
 					$env
 				)
 			);
@@ -289,7 +289,7 @@ class Fungies_Admin_Settings {
 			wp_send_json_error(
 				sprintf(
 					/* translators: 1: API error message, 2: environment name, 3: API host, 4: public key preview */
-					__( '%1$s — Make sure you hit Save Changes before testing the connection. [%2$s → %3$s, key: %4$s]', 'fungies-wp' ),
+					__( '%1$s — Make sure you hit Save Changes before testing the connection. [%2$s → %3$s, key: %4$s]', 'fungies-for-woocommerce' ),
 					$response->get_error_message(),
 					$env,
 					$host,
@@ -299,7 +299,7 @@ class Fungies_Admin_Settings {
 		}
 
 		wp_send_json_success(
-			sprintf( __( 'Connected to %s API! (%s)', 'fungies-wp' ), $env, $host )
+			sprintf( __( 'Connected to %s API! (%s)', 'fungies-for-woocommerce' ), $env, $host )
 		);
 	}
 

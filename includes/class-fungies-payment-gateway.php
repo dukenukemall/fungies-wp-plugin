@@ -7,8 +7,8 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 		$this->id                 = 'fungies';
 		$this->icon               = FUNGIES_WP_PLUGIN_URL . 'assets/img/fungies-icon.png';
 		$this->has_fields         = false;
-		$this->method_title       = __( 'Fungies Checkout', 'fungies-wp' );
-		$this->method_description = __( 'Accept payments via Fungies — the merchant of record handles payments, taxes, and compliance.', 'fungies-wp' );
+		$this->method_title       = __( 'Fungies Checkout', 'fungies-for-woocommerce' );
+		$this->method_description = __( 'Accept payments via Fungies — the merchant of record handles payments, taxes, and compliance.', 'fungies-for-woocommerce' );
 
 		$this->supports = array( 'products' );
 
@@ -25,29 +25,29 @@ class Fungies_Payment_Gateway extends WC_Payment_Gateway {
 	public function init_form_fields() {
 		$this->form_fields = array(
 			'enabled' => array(
-				'title'   => __( 'Enable/Disable', 'fungies-wp' ),
+				'title'   => __( 'Enable/Disable', 'fungies-for-woocommerce' ),
 				'type'    => 'checkbox',
-				'label'   => __( 'Enable Fungies Checkout', 'fungies-wp' ),
+				'label'   => __( 'Enable Fungies Checkout', 'fungies-for-woocommerce' ),
 				'default' => 'yes',
 			),
 			'title' => array(
-				'title'       => __( 'Title', 'fungies-wp' ),
+				'title'       => __( 'Title', 'fungies-for-woocommerce' ),
 				'type'        => 'text',
-				'description' => __( 'Title shown to customers during checkout.', 'fungies-wp' ),
-				'default'     => __( 'Fungies Checkout', 'fungies-wp' ),
+				'description' => __( 'Title shown to customers during checkout.', 'fungies-for-woocommerce' ),
+				'default'     => __( 'Fungies Checkout', 'fungies-for-woocommerce' ),
 			),
 			'description' => array(
-				'title'       => __( 'Description', 'fungies-wp' ),
+				'title'       => __( 'Description', 'fungies-for-woocommerce' ),
 				'type'        => 'textarea',
-				'description' => __( 'Description shown to customers during checkout.', 'fungies-wp' ),
-				'default'     => __( 'Pay securely via Fungies. All major payment methods accepted.', 'fungies-wp' ),
+				'description' => __( 'Description shown to customers during checkout.', 'fungies-for-woocommerce' ),
+				'default'     => __( 'Pay securely via Fungies. All major payment methods accepted.', 'fungies-for-woocommerce' ),
 			),
 		);
 	}
 
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
-		$order->update_status( 'pending', __( 'Awaiting Fungies payment.', 'fungies-wp' ) );
+		$order->update_status( 'pending', __( 'Awaiting Fungies payment.', 'fungies-for-woocommerce' ) );
 
 		// Remember the WC order id in the WC session so we can recover it on
 		// return even if the Fungies webhook hasn't landed yet (production

@@ -14,7 +14,7 @@ class Fungies_Dashboard_Widget {
 
 		wp_add_dashboard_widget(
 			'fungies_sync_status',
-			__( 'Fungies Sync Status', 'fungies-wp' ),
+			__( 'Fungies Sync Status', 'fungies-for-woocommerce' ),
 			array( __CLASS__, 'render' )
 		);
 	}
@@ -27,21 +27,21 @@ class Fungies_Dashboard_Widget {
 
 		echo '<table class="widefat striped"><tbody>';
 
-		echo '<tr><th>' . esc_html__( 'Connection', 'fungies-wp' ) . '</th><td>';
+		echo '<tr><th>' . esc_html__( 'Connection', 'fungies-for-woocommerce' ) . '</th><td>';
 		echo $connected
-			? '<span style="color:green">&#10003; ' . esc_html__( 'Connected', 'fungies-wp' ) . '</span>'
-			: '<span style="color:red">&#10007; ' . esc_html__( 'Not configured', 'fungies-wp' ) . '</span>';
+			? '<span style="color:green">&#10003; ' . esc_html__( 'Connected', 'fungies-for-woocommerce' ) . '</span>'
+			: '<span style="color:red">&#10007; ' . esc_html__( 'Not configured', 'fungies-for-woocommerce' ) . '</span>';
 		echo '</td></tr>';
 
-		echo '<tr><th>' . esc_html__( 'Products Synced', 'fungies-wp' ) . '</th>';
+		echo '<tr><th>' . esc_html__( 'Products Synced', 'fungies-for-woocommerce' ) . '</th>';
 		echo '<td>' . esc_html( $product_count ) . '</td></tr>';
 
-		echo '<tr><th>' . esc_html__( 'Last Sync', 'fungies-wp' ) . '</th>';
-		echo '<td>' . ( $last_sync ? esc_html( $last_sync ) : esc_html__( 'Never', 'fungies-wp' ) ) . '</td></tr>';
+		echo '<tr><th>' . esc_html__( 'Last Sync', 'fungies-for-woocommerce' ) . '</th>';
+		echo '<td>' . ( $last_sync ? esc_html( $last_sync ) : esc_html__( 'Never', 'fungies-for-woocommerce' ) ) . '</td></tr>';
 
 		echo '</tbody></table>';
 
 		$settings_url = admin_url( 'admin.php?page=wc-settings&tab=fungies' );
-		echo '<p><a class="button" href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Go to Settings', 'fungies-wp' ) . '</a></p>';
+		echo '<p><a class="button" href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Go to Settings', 'fungies-for-woocommerce' ) . '</a></p>';
 	}
 }

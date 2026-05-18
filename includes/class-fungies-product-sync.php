@@ -16,7 +16,7 @@ class Fungies_Product_Sync {
 		check_ajax_referer( 'fungies_test_connection', 'nonce' );
 
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_send_json_error( __( 'Permission denied.', 'fungies-wp' ) );
+			wp_send_json_error( __( 'Permission denied.', 'fungies-for-woocommerce' ) );
 		}
 
 		delete_transient( 'fungies_workspace_currency' );
@@ -48,7 +48,7 @@ class Fungies_Product_Sync {
 		$coupon_errs    = count( $coupons['errors'] ?? array() );
 
 		$message = sprintf(
-			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors). Coupons: %8$d (%9$d created, %10$d updated, %11$d errors).', 'fungies-wp' ),
+			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors). Coupons: %8$d (%9$d created, %10$d updated, %11$d errors).', 'fungies-for-woocommerce' ),
 			$pull_synced, $pull['created'], $pull['updated'],
 			$push_synced, $push['created'], $push['updated'], $err_count,
 			$coupon_synced, $coupons['created'], $coupons['updated'], $coupon_errs

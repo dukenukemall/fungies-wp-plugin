@@ -10,7 +10,7 @@ class Fungies_Order_Metabox {
 	public static function register() {
 		add_meta_box(
 			'fungies-order-details',
-			__( 'Fungies Order Details', 'fungies-wp' ),
+			__( 'Fungies Order Details', 'fungies-for-woocommerce' ),
 			array( __CLASS__, 'render' ),
 			'shop_order',
 			'side',
@@ -20,7 +20,7 @@ class Fungies_Order_Metabox {
 		// HPOS compatibility
 		add_meta_box(
 			'fungies-order-details',
-			__( 'Fungies Order Details', 'fungies-wp' ),
+			__( 'Fungies Order Details', 'fungies-for-woocommerce' ),
 			array( __CLASS__, 'render' ),
 			'woocommerce_page_wc-orders',
 			'side',
@@ -36,13 +36,13 @@ class Fungies_Order_Metabox {
 		if ( ! $order ) return;
 
 		$fields = array(
-			'_fungies_order_id'        => __( 'Fungies Order ID', 'fungies-wp' ),
-			'_fungies_order_number'    => __( 'Order Number', 'fungies-wp' ),
-			'_fungies_payment_id'      => __( 'Payment ID', 'fungies-wp' ),
-			'_fungies_payment_type'    => __( 'Payment Type', 'fungies-wp' ),
-			'_fungies_subscription_id' => __( 'Subscription ID', 'fungies-wp' ),
-			'_fungies_fee'             => __( 'Fungies Fee', 'fungies-wp' ),
-			'_fungies_tax'             => __( 'Tax Amount', 'fungies-wp' ),
+			'_fungies_order_id'        => __( 'Fungies Order ID', 'fungies-for-woocommerce' ),
+			'_fungies_order_number'    => __( 'Order Number', 'fungies-for-woocommerce' ),
+			'_fungies_payment_id'      => __( 'Payment ID', 'fungies-for-woocommerce' ),
+			'_fungies_payment_type'    => __( 'Payment Type', 'fungies-for-woocommerce' ),
+			'_fungies_subscription_id' => __( 'Subscription ID', 'fungies-for-woocommerce' ),
+			'_fungies_fee'             => __( 'Fungies Fee', 'fungies-for-woocommerce' ),
+			'_fungies_tax'             => __( 'Tax Amount', 'fungies-for-woocommerce' ),
 		);
 
 		$has_data = false;
@@ -60,12 +60,12 @@ class Fungies_Order_Metabox {
 		$invoice = $order->get_meta( '_fungies_invoice_url' );
 		if ( $invoice ) {
 			$has_data = true;
-			echo '<tr><th>' . esc_html__( 'Invoice', 'fungies-wp' ) . '</th>';
-			echo '<td><a href="' . esc_url( $invoice ) . '" target="_blank">' . esc_html__( 'View Invoice', 'fungies-wp' ) . '</a></td></tr>';
+			echo '<tr><th>' . esc_html__( 'Invoice', 'fungies-for-woocommerce' ) . '</th>';
+			echo '<td><a href="' . esc_url( $invoice ) . '" target="_blank">' . esc_html__( 'View Invoice', 'fungies-for-woocommerce' ) . '</a></td></tr>';
 		}
 
 		if ( ! $has_data ) {
-			echo '<tr><td colspan="2">' . esc_html__( 'No Fungies data for this order.', 'fungies-wp' ) . '</td></tr>';
+			echo '<tr><td colspan="2">' . esc_html__( 'No Fungies data for this order.', 'fungies-for-woocommerce' ) . '</td></tr>';
 		}
 
 		echo '</tbody></table>';

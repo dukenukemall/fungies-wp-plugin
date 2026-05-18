@@ -10,7 +10,7 @@ class Fungies_Product_Metabox {
 	public static function register() {
 		add_meta_box(
 			'fungies-product-details',
-			__( 'Fungies Product Link', 'fungies-wp' ),
+			__( 'Fungies Product Link', 'fungies-for-woocommerce' ),
 			array( __CLASS__, 'render' ),
 			'product',
 			'side',
@@ -26,35 +26,35 @@ class Fungies_Product_Metabox {
 		$product_type = get_post_meta( $post->ID, '_fungies_product_type', true );
 
 		if ( ! $offer_id && ! $product_id ) {
-			echo '<p>' . esc_html__( 'This product is not linked to Fungies.', 'fungies-wp' ) . '</p>';
+			echo '<p>' . esc_html__( 'This product is not linked to Fungies.', 'fungies-for-woocommerce' ) . '</p>';
 			return;
 		}
 
 		echo '<table class="widefat striped"><tbody>';
 
 		if ( $offer_id ) {
-			echo '<tr><th>' . esc_html__( 'Offer ID', 'fungies-wp' ) . '</th>';
+			echo '<tr><th>' . esc_html__( 'Offer ID', 'fungies-for-woocommerce' ) . '</th>';
 			echo '<td><code style="font-size:11px;word-break:break-all">' . esc_html( $offer_id ) . '</code></td></tr>';
 		}
 
 		if ( $product_id ) {
-			echo '<tr><th>' . esc_html__( 'Product ID', 'fungies-wp' ) . '</th>';
+			echo '<tr><th>' . esc_html__( 'Product ID', 'fungies-for-woocommerce' ) . '</th>';
 			echo '<td><code style="font-size:11px;word-break:break-all">' . esc_html( $product_id ) . '</code></td></tr>';
 		}
 
 		if ( $product_type ) {
-			echo '<tr><th>' . esc_html__( 'Type', 'fungies-wp' ) . '</th>';
+			echo '<tr><th>' . esc_html__( 'Type', 'fungies-for-woocommerce' ) . '</th>';
 			echo '<td>' . esc_html( $product_type ) . '</td></tr>';
 		}
 
 		if ( $currency ) {
-			echo '<tr><th>' . esc_html__( 'Currency', 'fungies-wp' ) . '</th>';
+			echo '<tr><th>' . esc_html__( 'Currency', 'fungies-for-woocommerce' ) . '</th>';
 			echo '<td>' . esc_html( strtoupper( $currency ) ) . '</td></tr>';
 		}
 
 		if ( $checkout_url ) {
-			echo '<tr><th>' . esc_html__( 'Checkout', 'fungies-wp' ) . '</th>';
-			echo '<td><a href="' . esc_url( $checkout_url ) . '" target="_blank">' . esc_html__( 'Open', 'fungies-wp' ) . '</a></td></tr>';
+			echo '<tr><th>' . esc_html__( 'Checkout', 'fungies-for-woocommerce' ) . '</th>';
+			echo '<td><a href="' . esc_url( $checkout_url ) . '" target="_blank">' . esc_html__( 'Open', 'fungies-for-woocommerce' ) . '</a></td></tr>';
 		}
 
 		echo '</tbody></table>';

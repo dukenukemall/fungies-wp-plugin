@@ -84,7 +84,7 @@ class Fungies_Order_Sync {
 
 		$wc_order->payment_complete( $fungies_order_id );
 		$wc_order->add_order_note(
-			sprintf( __( 'Fungies payment completed. Order ID: %s', 'fungies-wp' ), $fungies_order_id )
+			sprintf( __( 'Fungies payment completed. Order ID: %s', 'fungies-for-woocommerce' ), $fungies_order_id )
 		);
 
 		self::store_order_meta( $wc_order, $ev );
@@ -101,7 +101,7 @@ class Fungies_Order_Sync {
 			return;
 		}
 
-		$order->update_status( 'failed', __( 'Fungies payment failed.', 'fungies-wp' ) );
+		$order->update_status( 'failed', __( 'Fungies payment failed.', 'fungies-for-woocommerce' ) );
 		self::log( "Order #{$order->get_id()} marked failed." );
 	}
 
@@ -120,11 +120,11 @@ class Fungies_Order_Sync {
 
 		wc_create_refund( array(
 			'amount'   => $refund_amount,
-			'reason'   => __( 'Refunded via Fungies.', 'fungies-wp' ),
+			'reason'   => __( 'Refunded via Fungies.', 'fungies-for-woocommerce' ),
 			'order_id' => $order->get_id(),
 		) );
 
-		$order->update_status( 'refunded', __( 'Fungies payment refunded.', 'fungies-wp' ) );
+		$order->update_status( 'refunded', __( 'Fungies payment refunded.', 'fungies-for-woocommerce' ) );
 		self::log( "Order #{$order->get_id()} refunded ({$refund_amount})." );
 	}
 
@@ -141,7 +141,7 @@ class Fungies_Order_Sync {
 		$order->save();
 
 		$order->add_order_note(
-			sprintf( __( 'Fungies subscription created: %s', 'fungies-wp' ), $sub_id )
+			sprintf( __( 'Fungies subscription created: %s', 'fungies-for-woocommerce' ), $sub_id )
 		);
 		self::log( "Subscription {$sub_id} linked to order #{$order->get_id()}." );
 	}
@@ -191,7 +191,7 @@ class Fungies_Order_Sync {
 		$order->save();
 
 		$order->add_order_note(
-			sprintf( __( 'Fungies subscription cancelled: %s', 'fungies-wp' ), $sub_id )
+			sprintf( __( 'Fungies subscription cancelled: %s', 'fungies-for-woocommerce' ), $sub_id )
 		);
 		self::log( "Subscription {$sub_id} cancelled on order #{$order->get_id()}." );
 	}
