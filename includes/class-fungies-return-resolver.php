@@ -56,13 +56,15 @@ class Fungies_Return_Resolver {
 		if ( empty( $fungies_order_id ) ) return null;
 		// Lookup a single WC order by a Fungies-specific indexed meta_key /
 		// meta_value pair. This is not a general meta-key scan, so the slow-
-		// query heuristic does not apply.
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+		// query heuristic does not apply. Block-suppress because the sniff
+		// fires on the array-key string tokens inside the literal.
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		$orders = wc_get_orders( array(
 			'meta_key'   => '_fungies_order_id',
 			'meta_value' => $fungies_order_id,
 			'limit'      => 1,
 		) );
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		return ! empty( $orders ) ? $orders[0] : null;
 	}
 

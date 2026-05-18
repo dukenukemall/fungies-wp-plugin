@@ -145,8 +145,10 @@ class Fungies_Product_Sync {
 		// We must filter on the absence of `_fungies_offer_id` post meta to
 		// skip Fungies-originated products on push. `_fungies_offer_id` is a
 		// single low-cardinality meta key only set on synced products, so this
-		// query is fast in practice.
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+		// query is fast in practice. Block-suppress because the sniff fires
+		// on the `'meta_query'` array-key string token several lines below
+		// any `ignore`-style comment we could place above `get_posts(`.
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 		$wc_ids = get_posts( array(
 			'post_type'      => 'product',
 			'post_status'    => 'publish',
@@ -159,6 +161,7 @@ class Fungies_Product_Sync {
 				),
 			),
 		) );
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 
 		$created = 0;
 		$updated = 0;

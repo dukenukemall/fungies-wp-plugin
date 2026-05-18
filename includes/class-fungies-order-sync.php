@@ -311,13 +311,16 @@ class Fungies_Order_Sync {
 		// Lookup a single WC order by a Fungies-specific meta key/value pair
 		// (e.g. `_fungies_order_id`). This is a low-cardinality, indexed
 		// lookup, not a general meta_key scan — the WordPress slow-query
-		// warning does not apply in practice.
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+		// warning does not apply in practice. Block-suppress because the
+		// sniff fires on the `'meta_key'` / `'meta_value'` array-key tokens,
+		// which are several lines below an `ignore`-style comment.
+		// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		$orders = wc_get_orders( array(
 			'meta_key'   => $key,
 			'meta_value' => $value,
 			'limit'      => 1,
 		) );
+		// phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 
 		return ! empty( $orders ) ? $orders[0] : null;
 	}

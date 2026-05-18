@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.4.2
+Stable tag: 2.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,6 +219,10 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.4.3 =
+* Lint: Replaced the three `phpcs:ignore` annotations added in 2.4.2 with proper `phpcs:disable` / `phpcs:enable` blocks. The slow-query sniff fires on the `'meta_key'` / `'meta_value'` / `'meta_query'` array-key string tokens *inside* the `wc_get_orders()` / `get_posts()` literal, not on the outer call line, so the single-line `ignore` form never reached them. Affects `Fungies_Order_Sync::find_order_by_meta()`, `Fungies_Return_Resolver::by_meta()`, and `Fungies_Product_Sync::push_to_fungies()`.
+* No runtime behaviour changes.
+
 = 2.4.2 =
 * Security/correctness: Replaced two SQL queries in `Fungies_Workspace_Meta::get_all_pushed_offer_ids()` and `Fungies_Product_Sync::cleanup_pushed_duplicates()` that interpolated class constants directly into the SQL string with fully prepared statements using `$wpdb->prepare()` + `$wpdb->esc_like()`. Behaviour is unchanged — values were already trusted constants, but the new form is what WordPress.org Plugin Check requires and what static analyzers can verify.
 * i18n: Added the missing `/* translators: ... */` comments above every gettext call that uses placeholders so translators see what each `%s` / `%d` refers to. Reworked `'Connected to %s API! (%s)'` into ordered placeholders `'Connected to %1$s API! (%2$s)'` per WP i18n guidelines.
@@ -268,6 +272,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 For changelog entries from earlier releases (2.1.x, 2.0.x, 1.x), see `changelog.txt` in the plugin root.
 
 == Upgrade Notice ==
+
+= 2.4.3 =
+Plugin Check follow-up: fixes the scope of three slow-query phpcs:ignore annotations from 2.4.2 (single-line ignores didn't reach the array-key tokens). No runtime changes.
 
 = 2.4.2 =
 WordPress.org Plugin Check pass: prepared SQL, translator comments, ordered placeholders, and justified phpcs:ignore annotations on direct DB reads. No runtime changes.
