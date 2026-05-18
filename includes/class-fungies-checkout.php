@@ -9,7 +9,14 @@ class Fungies_Checkout {
 	}
 
 	public static function handle_return() {
+		// Read-only post-payment redirect handler. The customer is bounced back
+		// from Fungies hosted checkout with `fngs-order-id` + `fngs-user-email`.
+		// Authoritative payment state lives in the parallel webhook, which is
+		// itself HMAC-SHA256-verified — this handler only resolves the WC order
+		// and redirects, performs no state mutation worth a nonce.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$fungies_order_id = isset( $_GET['fngs-order-id'] ) ? sanitize_text_field( wp_unslash( $_GET['fngs-order-id'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$fungies_email    = isset( $_GET['fngs-user-email'] ) ? sanitize_email( wp_unslash( $_GET['fngs-user-email'] ) ) : '';
 
 		wc_get_logger()->info(

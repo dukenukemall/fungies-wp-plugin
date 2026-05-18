@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.4.1
+Stable tag: 2.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,6 +219,12 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.4.2 =
+* Security/correctness: Replaced two SQL queries in `Fungies_Workspace_Meta::get_all_pushed_offer_ids()` and `Fungies_Product_Sync::cleanup_pushed_duplicates()` that interpolated class constants directly into the SQL string with fully prepared statements using `$wpdb->prepare()` + `$wpdb->esc_like()`. Behaviour is unchanged — values were already trusted constants, but the new form is what WordPress.org Plugin Check requires and what static analyzers can verify.
+* i18n: Added the missing `/* translators: ... */` comments above every gettext call that uses placeholders so translators see what each `%s` / `%d` refers to. Reworked `'Connected to %s API! (%s)'` into ordered placeholders `'Connected to %1$s API! (%2$s)'` per WP i18n guidelines.
+* Lint: Added narrow `phpcs:ignore` annotations with inline rationale on the handful of justified direct-DB / slow-query / nonce-check warnings (e.g. the `wc-api=fungies_return` redirect handler reads `$_GET` for read-only redirect logic and is paired with an HMAC-verified webhook; the direct postmeta lookups are single-row indexed reads). No new ignores were added blindly.
+* No runtime behaviour changes.
+
 = 2.4.1 =
 * Compliance: Added the `Requires Plugins: woocommerce` header introduced in WordPress 6.5. WordPress now refuses to activate the plugin unless WooCommerce is installed and active, and the WooCommerce dependency is shown in the Plugins screen.
 * i18n: Renamed the plugin text domain from `fungies-wp` to `fungies-for-woocommerce` (matching the plugin slug) across all 97 gettext calls and the plugin header. Required for the WordPress.org translation platform to pick up strings for community translation. Any custom `.po` / `.mo` files keyed off the old `fungies-wp` domain must be re-generated.
@@ -262,6 +268,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 For changelog entries from earlier releases (2.1.x, 2.0.x, 1.x), see `changelog.txt` in the plugin root.
 
 == Upgrade Notice ==
+
+= 2.4.2 =
+WordPress.org Plugin Check pass: prepared SQL, translator comments, ordered placeholders, and justified phpcs:ignore annotations on direct DB reads. No runtime changes.
 
 = 2.4.1 =
 WP.org compliance: declares WooCommerce as a `Requires Plugins` dependency and renames the text domain to match the plugin slug. Recommended.

@@ -84,7 +84,11 @@ class Fungies_Order_Sync {
 
 		$wc_order->payment_complete( $fungies_order_id );
 		$wc_order->add_order_note(
-			sprintf( __( 'Fungies payment completed. Order ID: %s', 'fungies-for-woocommerce' ), $fungies_order_id )
+			sprintf(
+				/* translators: %s: Fungies order ID */
+				__( 'Fungies payment completed. Order ID: %s', 'fungies-for-woocommerce' ),
+				$fungies_order_id
+			)
 		);
 
 		self::store_order_meta( $wc_order, $ev );
@@ -141,7 +145,11 @@ class Fungies_Order_Sync {
 		$order->save();
 
 		$order->add_order_note(
-			sprintf( __( 'Fungies subscription created: %s', 'fungies-for-woocommerce' ), $sub_id )
+			sprintf(
+				/* translators: %s: Fungies subscription ID */
+				__( 'Fungies subscription created: %s', 'fungies-for-woocommerce' ),
+				$sub_id
+			)
 		);
 		self::log( "Subscription {$sub_id} linked to order #{$order->get_id()}." );
 	}
@@ -191,7 +199,11 @@ class Fungies_Order_Sync {
 		$order->save();
 
 		$order->add_order_note(
-			sprintf( __( 'Fungies subscription cancelled: %s', 'fungies-for-woocommerce' ), $sub_id )
+			sprintf(
+				/* translators: %s: Fungies subscription ID */
+				__( 'Fungies subscription cancelled: %s', 'fungies-for-woocommerce' ),
+				$sub_id
+			)
 		);
 		self::log( "Subscription {$sub_id} cancelled on order #{$order->get_id()}." );
 	}
@@ -296,6 +308,11 @@ class Fungies_Order_Sync {
 	private static function find_order_by_meta( $key, $value ) {
 		if ( empty( $value ) ) return null;
 
+		// Lookup a single WC order by a Fungies-specific meta key/value pair
+		// (e.g. `_fungies_order_id`). This is a low-cardinality, indexed
+		// lookup, not a general meta_key scan — the WordPress slow-query
+		// warning does not apply in practice.
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		$orders = wc_get_orders( array(
 			'meta_key'   => $key,
 			'meta_value' => $value,
@@ -351,7 +368,11 @@ class Fungies_Order_Sync {
 
 	private static function find_product_by_offer( $offer_id ) {
 		global $wpdb;
-
+		// Single-row reverse lookup post_id from a Fungies offer ID stored in
+		// post meta. LIMIT 1 against indexed meta_key/meta_value; running this
+		// through WP_Query just to placate the linter adds overhead with no
+		// caching benefit (called once per webhook line item).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_var( $wpdb->prepare(
 			"SELECT post_id FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_fungies_offer_id' AND meta_value = %s

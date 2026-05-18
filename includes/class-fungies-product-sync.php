@@ -48,6 +48,7 @@ class Fungies_Product_Sync {
 		$coupon_errs    = count( $coupons['errors'] ?? array() );
 
 		$message = sprintf(
+			/* translators: 1: total pulled, 2: pulls created, 3: pulls updated, 4: total pushed, 5: pushes created, 6: pushes updated, 7: push errors, 8: total coupons synced, 9: coupons created, 10: coupons updated, 11: coupon errors */
 			__( 'Pull: %1$d (%2$d created, %3$d updated). Push: %4$d (%5$d created, %6$d updated, %7$d errors). Coupons: %8$d (%9$d created, %10$d updated, %11$d errors).', 'fungies-for-woocommerce' ),
 			$pull_synced, $pull['created'], $pull['updated'],
 			$push_synced, $push['created'], $push['updated'], $err_count,
@@ -110,14 +111,23 @@ class Fungies_Product_Sync {
 
 	private static function cleanup_pushed_duplicates() {
 		global $wpdb;
-		$pushed_clause = Fungies_Workspace_Meta::pushed_offer_meta_key_sql_clause( 'pushed' );
+		// Self-join on postmeta to find WC products that were pulled from Fungies
+		// but whose offer ID we also pushed from another WC product (i.e. a
+		// duplicate created by re-pull after push). Not expressible via WP_Query;
+		// transient cleanup pass invoked once per Sync Now, so caching is N/A.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_col(
-			"SELECT pulled.post_id
-			 FROM {$wpdb->postmeta} pulled
-			 INNER JOIN {$wpdb->postmeta} pushed
-			   ON pushed.meta_value = pulled.meta_value AND pushed.post_id <> pulled.post_id
-			 WHERE pulled.meta_key = '_fungies_offer_id'
-			   AND $pushed_clause"
+			$wpdb->prepare(
+				"SELECT pulled.post_id
+				 FROM {$wpdb->postmeta} pulled
+				 INNER JOIN {$wpdb->postmeta} pushed
+				   ON pushed.meta_value = pulled.meta_value AND pushed.post_id <> pulled.post_id
+				 WHERE pulled.meta_key = %s
+				   AND ( pushed.meta_key = %s OR pushed.meta_key LIKE %s )",
+				'_fungies_offer_id',
+				Fungies_Workspace_Meta::PREFIX_OFFER,
+				$wpdb->esc_like( Fungies_Workspace_Meta::PREFIX_OFFER . '__' ) . '%'
+			)
 		);
 		$count = 0;
 		foreach ( (array) $rows as $pid ) {
@@ -132,6 +142,11 @@ class Fungies_Product_Sync {
 	public static function push_to_fungies( $client ) {
 		$workspace_currency = self::get_workspace_currency( $client );
 
+		// We must filter on the absence of `_fungies_offer_id` post meta to
+		// skip Fungies-originated products on push. `_fungies_offer_id` is a
+		// single low-cardinality meta key only set on synced products, so this
+		// query is fast in practice.
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 		$wc_ids = get_posts( array(
 			'post_type'      => 'product',
 			'post_status'    => 'publish',
@@ -343,6 +358,10 @@ class Fungies_Product_Sync {
 
 	private static function find_wc_product_by_offer_id( $offer_id ) {
 		global $wpdb;
+		// Reverse lookup WC post from a Fungies offer ID stored in post meta.
+		// Single-row LIMIT 1 against an indexed meta_key/meta_value; running this
+		// through WP_Query just to satisfy a lint adds overhead with no benefit.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$product_id = $wpdb->get_var( $wpdb->prepare(
 			"SELECT post_id FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_fungies_offer_id' AND meta_value = %s

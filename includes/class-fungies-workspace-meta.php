@@ -89,17 +89,20 @@ class Fungies_Workspace_Meta {
 
 	public static function get_all_pushed_offer_ids() {
 		global $wpdb;
+		// Direct postmeta scan with a LIKE on workspace-suffixed meta keys (e.g.
+		// `_fungies_pushed_offer_id__<hash>`). Not expressible via WP_Query, and the
+		// result is consumed transiently inside a single Sync Now pass, so we don't
+		// cache it.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_col(
-			"SELECT meta_value FROM {$wpdb->postmeta}
-			 WHERE ( meta_key = '" . self::PREFIX_OFFER . "'
-			      OR meta_key LIKE '" . self::PREFIX_OFFER . "\\_\\_%' ESCAPE '\\\\' )
-			   AND meta_value <> ''"
+			$wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta}
+				 WHERE ( meta_key = %s OR meta_key LIKE %s )
+				   AND meta_value <> ''",
+				self::PREFIX_OFFER,
+				$wpdb->esc_like( self::PREFIX_OFFER . '__' ) . '%'
+			)
 		);
 		return array_flip( (array) $rows );
-	}
-
-	public static function pushed_offer_meta_key_sql_clause( $alias = 'pm' ) {
-		return "( {$alias}.meta_key = '" . self::PREFIX_OFFER . "'
-		      OR {$alias}.meta_key LIKE '" . self::PREFIX_OFFER . "\\_\\_%' ESCAPE '\\\\' )";
 	}
 }

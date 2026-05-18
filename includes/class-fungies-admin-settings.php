@@ -213,7 +213,11 @@ class Fungies_Admin_Settings {
 					$last_sync = get_option( 'fungies_last_sync', '' );
 					if ( $last_sync ) {
 						echo '<p class="description" id="fungies-last-sync">';
-						printf( esc_html__( 'Last sync: %s', 'fungies-for-woocommerce' ), esc_html( $last_sync ) );
+						printf(
+							/* translators: %s: timestamp of last successful sync */
+							esc_html__( 'Last sync: %s', 'fungies-for-woocommerce' ),
+							esc_html( $last_sync )
+						);
 						echo '</p>';
 					} else {
 						echo '<p class="description" id="fungies-last-sync" hidden></p>';
@@ -233,6 +237,9 @@ class Fungies_Admin_Settings {
 		if ( 'woocommerce_page_wc-settings' !== $hook ) {
 			return;
 		}
+		// Read-only branch — `tab` is the standard WC settings tab indicator set
+		// by WP navigation, not a state-changing parameter. No nonce applies.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( ! isset( $_GET['tab'] ) || 'fungies' !== sanitize_text_field( wp_unslash( $_GET['tab'] ) ) ) {
 			return;
 		}
@@ -299,7 +306,12 @@ class Fungies_Admin_Settings {
 		}
 
 		wp_send_json_success(
-			sprintf( __( 'Connected to %s API! (%s)', 'fungies-for-woocommerce' ), $env, $host )
+			sprintf(
+				/* translators: 1: environment name (production or staging), 2: API host (e.g. api.fungies.io) */
+				__( 'Connected to %1$s API! (%2$s)', 'fungies-for-woocommerce' ),
+				$env,
+				$host
+			)
 		);
 	}
 
