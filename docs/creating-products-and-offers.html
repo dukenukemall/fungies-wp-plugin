@@ -1,0 +1,285 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Creating Products & Offers via the Fungies API</title>
+<style>
+:root {
+  --fg: #1a1a1a;
+  --muted: #5b6470;
+  --border: #d9dde4;
+  --bg-code: #f5f6f8;
+  --accent: #4f46e5;
+}
+* { box-sizing: border-box; }
+html, body {
+  font-family: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  color: var(--fg);
+  line-height: 1.55;
+  font-size: 11pt;
+  margin: 0;
+  padding: 0;
+}
+body { padding: 2.4rem 2.8rem; }
+h1 { font-size: 22pt; margin: 0 0 0.6rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; }
+h2 { font-size: 15pt; margin: 1.6rem 0 0.5rem; color: var(--accent); }
+h3 { font-size: 12.5pt; margin: 1.1rem 0 0.4rem; }
+p  { margin: 0.5rem 0; }
+hr { border: none; border-top: 1px dashed var(--border); margin: 1.4rem 0; }
+ul, ol { margin: 0.4rem 0 0.6rem 1.4rem; padding: 0; }
+li { margin: 0.18rem 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.32rem;
+  font-size: 9.5pt;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  overflow-x: auto;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 9pt;
+  white-space: pre;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6rem 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+thead th {
+  background: #eef0f5;
+  text-align: left;
+  font-weight: 600;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  vertical-align: top;
+}
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+/* Print tuning */
+@page {
+  size: A4;
+  margin: 14mm 14mm 18mm 14mm;
+}
+@media print {
+  body { padding: 0; }
+  h2, h3 { page-break-after: avoid; }
+  pre, table { page-break-inside: avoid; }
+}
+
+.footer {
+  margin-top: 2.4rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+  font-size: 8.5pt;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<h1>Creating Products &amp; Offers via the Fungies API</h1>
+<p>A developer's guide for the Fungies REST API. Verified live against the staging API on 2026-05-21.</p>
+<p>A <strong>product</strong> on Fungies is a logical SKU; an <strong>offer</strong> is the priced, purchasable thing customers actually buy. You always create one product first, then one or more offers that point at it via <code>productId</code>. The hosted checkout URL is <code>&lt;store&gt;/checkout/&lt;offer_id&gt;</code>.</p>
+<hr>
+<h2>1. Pick the right environment</h2>
+<table><thead><tr>
+<th>Env</th>
+<th>Base URL</th>
+<th>Get keys at</th>
+</tr></thead><tbody>
+<tr>
+<td>Staging</td>
+<td><code>https://api.stage.fungies.net/v0</code></td>
+<td>https://app.stage.fungies.net &rarr; Developers &rarr; API Keys</td>
+</tr>
+<tr>
+<td>Production</td>
+<td><code>https://api.fungies.io/v0</code></td>
+<td>https://app.fungies.io &rarr; Developers &rarr; API Keys</td>
+</tr>
+</tbody></table>
+<p>Each environment is completely isolated &mdash; staging keys don't work against prod and vice versa. Always build against staging first.</p>
+<h2>2. Authentication</h2>
+<p>Every request needs two headers:</p>
+<pre><code class="lang-http">
+x-fngs-public-key: pub_...
+x-fngs-secret-key: sec_...
+Content-Type: application/json
+</code></pre>
+<p>Don't expose <code>sec_*</code> to the browser &mdash; it's the same as a password.</p>
+<h2>3. Create the product</h2>
+<p><code>POST /v0/products/create</code></p>
+<pre><code class="lang-json">
+{
+  "name": "My Awesome Course",
+  "type": "OneTimePayment",
+  "status": "ACTIVE",
+  "description": "Optional plain-text description.",
+  "cover": "https://your-cdn.example.com/cover.jpg"
+}
+</code></pre>
+<table><thead><tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td><code>name</code></td>
+<td>yes</td>
+<td>Shown on the checkout page</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>yes</td>
+<td><code>OneTimePayment</code> is the only type the WP plugin supports today. Other valid values include <code>Subscription</code>.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>yes</td>
+<td><code>ACTIVE</code> = visible/purchasable, <code>INACTIVE</code> = hidden</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>no</td>
+<td>Strip HTML before sending &mdash; the API stores it as plain text</td>
+</tr>
+<tr>
+<td><code>cover</code></td>
+<td>no</td>
+<td>Public HTTPS URL. Must be reachable from Fungies.</td>
+</tr>
+</tbody></table>
+<p>Response shape (the bit you care about):</p>
+<pre><code class="lang-json">
+{ "data": { "product": { "id": "85ce727c-48a7-4400-90ad-91bb52bcd4a6" } } }
+</code></pre>
+<p>Save <code>data.product.id</code> &mdash; you need it for the offer.</p>
+<h2>4. Create the offer</h2>
+<p><code>POST /v0/offers/create</code></p>
+<pre><code class="lang-json">
+{
+  "name": "My Awesome Course - Full Access",
+  "productId": "85ce727c-48a7-4400-90ad-91bb52bcd4a6",
+  "currency": "USD",
+  "price": 1999,
+  "limit": null
+}
+</code></pre>
+<table><thead><tr>
+<th>Field</th>
+<th>Required</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td><code>name</code></td>
+<td>yes</td>
+<td>Shown in the cart line item</td>
+</tr>
+<tr>
+<td><code>productId</code></td>
+<td>yes</td>
+<td>UUID from step 3</td>
+</tr>
+<tr>
+<td><code>currency</code></td>
+<td>yes</td>
+<td>ISO 4217 uppercase. Must match your workspace currency &mdash; staging workspaces are usually USD.</td>
+</tr>
+<tr>
+<td><code>price</code></td>
+<td>yes</td>
+<td><strong>Integer in minor units (cents).</strong> <code>1999</code> = <code>$19.99</code>. Empirically the API also accepts decimals like <code>9.99</code> and converts them via &times;100, but integer cents is the unambiguous form &mdash; stick with it.</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td>no</td>
+<td><code>null</code> = unlimited. Integer = max purchases before the offer is exhausted.</td>
+</tr>
+</tbody></table>
+<p>Response:</p>
+<pre><code class="lang-json">
+{ "data": { "offer": { "id": "370d144b-a2b0-4863-9ca2-beeabfc80cd6" } } }
+</code></pre>
+<h2>5. Build the checkout URL</h2>
+<p>Once your Fungies store is <strong>published</strong> (Dashboard &rarr; Store &rarr; Publish), customers can buy the offer at:</p>
+<pre><code>
+https://&lt;your-store-slug&gt;.app.fungies.io/checkout/&lt;offer_id&gt;
+</code></pre>
+<p>Append custom fields and customer hints as query params to prefill the checkout and have them echoed back in the webhook:</p>
+<pre><code>
+?fngs-user-email=alice@example.com
+&amp;fngs-customer-country=US
+&amp;user_id=u_12345         (custom field, surfaces in webhook payload)
+&amp;fngs-discount-code=SAVE10
+</code></pre>
+<h2>6. End-to-end example (cURL)</h2>
+<pre><code class="lang-bash">
+PUB="pub_..."
+SEC="sec_..."
+BASE="https://api.stage.fungies.net/v0"
+
+# 1. Create product
+PRODUCT_ID=$(curl -sS -X POST "$BASE/products/create" \
+  -H "x-fngs-public-key: $PUB" \
+  -H "x-fngs-secret-key: $SEC" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Course","type":"OneTimePayment","status":"ACTIVE"}' \
+  | jq -r '.data.product.id')
+
+# 2. Create offer pointed at it
+OFFER_ID=$(curl -sS -X POST "$BASE/offers/create" \
+  -H "x-fngs-public-key: $PUB" \
+  -H "x-fngs-secret-key: $SEC" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Full Access\",\"productId\":\"$PRODUCT_ID\",\"currency\":\"USD\",\"price\":1999,\"limit\":null}" \
+  | jq -r '.data.offer.id')
+
+echo "Buy at: https://&lt;store&gt;.app.fungies.io/checkout/$OFFER_ID"
+</code></pre>
+<h2>7. Updating instead of duplicating</h2>
+<p>The create endpoints <strong>always create a new row</strong>. To edit an existing product or offer, use:</p>
+<ul>
+<li><code>PATCH /v0/products/{id}/update</code> &mdash; body must include <code>"id": "&lt;same id&gt;"</code> plus any fields to change</li>
+<li><code>PATCH /v0/offers/{id}/update</code> &mdash; same convention</li>
+</ul>
+<p>Same payload shape as create. The WP plugin's <code>Fungies_Product_Push</code> class is the canonical reference implementation for the create-or-update flow, including 404-recovery when an ID becomes stale after switching workspaces.</p>
+<h2>8. Things that will trip you up</h2>
+<ol>
+<li><strong>Currency mismatch</strong> &mdash; if your workspace is USD and you send <code>currency: EUR</code>, the offer is rejected. Fetch a few existing offers (<code>GET /offers/list?take=10</code>) and inspect their <code>currency</code> to discover the workspace currency.</li>
+<li><strong>Price units</strong> &mdash; send integer cents. <code>19.99</code> works but is fragile.</li>
+<li><strong><code>status: ACTIVE</code></strong> &mdash; without this, the product is created but customers can't see or buy the offer.</li>
+<li><strong>Store not published</strong> &mdash; the <code>/checkout/&lt;offer_id&gt;</code> URL only works once the store is in published state in the Fungies dashboard.</li>
+<li><strong>Custom-field validation</strong> &mdash; if you've defined required custom fields on the product (e.g. <code>user_id</code>), checkout will refuse to load until they're passed as query params. See <code>help.fungies.io/for-saas-developers/using-customfields-to-parse-data-from-your-software-app</code>.</li>
+</ol>
+<h2>9. Verified live</h2>
+<p>This guide's flow was executed end-to-end against the <strong>testworks staging workspace</strong> on 2026-05-21:</p>
+<pre><code>
+[1] GET  /offers/list                      -&gt; 200 OK, auth confirmed
+[2] POST /products/create                  -&gt; productId = 85ce727c-48a7-4400-90ad-91bb52bcd4a6
+[3] POST /offers/create  (sent price=9.99) -&gt; offerId   = 370d144b-a2b0-4863-9ca2-beeabfc80cd6
+[4] GET  /offers/{id}    (round-trip)      -&gt; price=999 USD   &lt;- proves API stores cents
+</code></pre>
+
+<div class="footer">
+  Fungies for WooCommerce &middot; Developer guide &middot; Generated 2026-05-21 &middot; Source: docs/creating-products-and-offers.md
+</div>
+</body>
+</html>
