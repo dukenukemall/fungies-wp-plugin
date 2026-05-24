@@ -1,27 +1,38 @@
 #!/usr/bin/env pwsh
-# Render docs/creating-products-and-offers.md -> ...html -> ...pdf
+# Render docs/<name>.md -> docs/<name>.html -> docs/<name>.pdf
 # using Microsoft Edge headless (preinstalled on Windows 10/11).
 #
 # Why this exists:
 #   We don't want a Node/Python toolchain just to ship a PDF. Edge's
 #   Chromium-based `--headless --print-to-pdf` is good enough and is
 #   already on every dev machine.
+#
+# Usage:
+#   ./docs/build-pdf.ps1                 # rebuild every *.md in docs/
+#   ./docs/build-pdf.ps1 -Name foo       # rebuild just docs/foo.md
+#   ./docs/build-pdf.ps1 -Name foo.md    # same
 
 [CmdletBinding()]
-param()
+param(
+    [string]$Name
+)
 
 $ErrorActionPreference = 'Stop'
 
 $docsDir = $PSScriptRoot
-$mdPath  = Join-Path $docsDir 'creating-products-and-offers.md'
-$htmlPath = Join-Path $docsDir 'creating-products-and-offers.html'
-$pdfPath  = Join-Path $docsDir 'creating-products-and-offers.pdf'
 
-if (-not (Test-Path $mdPath)) {
-    throw "Missing source: $mdPath"
+if ($Name) {
+    $Name = [System.IO.Path]::GetFileNameWithoutExtension($Name)
+    $mdPaths = @(Join-Path $docsDir "$Name.md")
+    if (-not (Test-Path $mdPaths[0])) {
+        throw "Missing source: $($mdPaths[0])"
+    }
+} else {
+    $mdPaths = Get-ChildItem -LiteralPath $docsDir -Filter '*.md' | ForEach-Object { $_.FullName }
+    if ($mdPaths.Count -eq 0) {
+        throw "No markdown files found in $docsDir"
+    }
 }
-
-$md = Get-Content -Raw -LiteralPath $mdPath
 
 # --- Minimal markdown -> HTML converter -------------------------------------
 # Handles: headings (#..######), fenced code blocks (```lang ... ```), pipe
@@ -185,8 +196,6 @@ function ConvertFrom-MarkdownLite {
     return $html.ToString()
 }
 
-$body = ConvertFrom-MarkdownLite -src $md
-
 $css = @'
 :root {
   --fg: #1a1a1a;
@@ -280,28 +289,6 @@ em { font-style: italic; }
 
 $generated = (Get-Date).ToString('yyyy-MM-dd')
 
-$html = @"
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Creating Products & Offers via the Fungies API</title>
-<style>
-$css
-</style>
-</head>
-<body>
-$body
-<div class="footer">
-  Fungies for WooCommerce &middot; Developer guide &middot; Generated $generated &middot; Source: docs/creating-products-and-offers.md
-</div>
-</body>
-</html>
-"@
-
-Set-Content -LiteralPath $htmlPath -Value $html -Encoding UTF8
-Write-Host "Wrote HTML : $htmlPath"
-
 $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 if (-not (Test-Path $edge)) {
     $edge = 'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
@@ -310,26 +297,64 @@ if (-not (Test-Path $edge)) {
     throw "Microsoft Edge not found. Install Edge or extend this script with another headless renderer."
 }
 
-if (Test-Path $pdfPath) { Remove-Item $pdfPath -Force }
+foreach ($mdPath in $mdPaths) {
+    $stem     = [System.IO.Path]::GetFileNameWithoutExtension($mdPath)
+    $htmlPath = Join-Path $docsDir "$stem.html"
+    $pdfPath  = Join-Path $docsDir "$stem.pdf"
 
-# Edge requires a file:// URI and an absolute output path. The user data dir
-# flag isolates the headless run from your normal browser session.
-$userData = Join-Path $env:TEMP "fungies-pdf-$([guid]::NewGuid().ToString('N'))"
-$fileUri  = ([uri]$htmlPath).AbsoluteUri
+    $md = Get-Content -Raw -LiteralPath $mdPath
 
-& $edge `
-    --headless=new `
-    --disable-gpu `
-    --no-pdf-header-footer `
-    "--user-data-dir=$userData" `
-    "--print-to-pdf=$pdfPath" `
-    $fileUri | Out-Null
+    # Extract the first H1 as the document title; fall back to the file stem.
+    $title = $stem
+    if ($md -match '(?m)^#\s+(.+?)\s*$') {
+        $title = $Matches[1] -replace '&mdash;', '-'
+    }
 
-if (Test-Path $userData) { Remove-Item -Recurse -Force $userData -ErrorAction SilentlyContinue }
+    $body = ConvertFrom-MarkdownLite -src $md
 
-if (-not (Test-Path $pdfPath)) {
-    throw "Edge headless did not produce a PDF at $pdfPath"
+    $html = @"
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>$title</title>
+<style>
+$css
+</style>
+</head>
+<body>
+$body
+<div class="footer">
+  Fungies for WooCommerce &middot; Developer guide &middot; Generated $generated &middot; Source: docs/$stem.md
+</div>
+</body>
+</html>
+"@
+
+    Set-Content -LiteralPath $htmlPath -Value $html -Encoding UTF8
+    Write-Host "Wrote HTML : $htmlPath"
+
+    if (Test-Path $pdfPath) { Remove-Item $pdfPath -Force }
+
+    # Edge requires a file:// URI and an absolute output path. The user data dir
+    # flag isolates the headless run from your normal browser session.
+    $userData = Join-Path $env:TEMP "fungies-pdf-$([guid]::NewGuid().ToString('N'))"
+    $fileUri  = ([uri]$htmlPath).AbsoluteUri
+
+    & $edge `
+        --headless=new `
+        --disable-gpu `
+        --no-pdf-header-footer `
+        "--user-data-dir=$userData" `
+        "--print-to-pdf=$pdfPath" `
+        $fileUri | Out-Null
+
+    if (Test-Path $userData) { Remove-Item -Recurse -Force $userData -ErrorAction SilentlyContinue }
+
+    if (-not (Test-Path $pdfPath)) {
+        throw "Edge headless did not produce a PDF at $pdfPath"
+    }
+
+    $size = (Get-Item $pdfPath).Length
+    Write-Host ("Wrote PDF  : {0} ({1:N0} bytes)" -f $pdfPath, $size)
 }
-
-$size = (Get-Item $pdfPath).Length
-Write-Host ("Wrote PDF  : {0} ({1:N0} bytes)" -f $pdfPath, $size)

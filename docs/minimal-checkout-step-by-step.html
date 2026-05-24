@@ -1,0 +1,563 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Minimal Checkout with Fungies - Step-by-Step</title>
+<style>
+:root {
+  --fg: #1a1a1a;
+  --muted: #5b6470;
+  --border: #d9dde4;
+  --bg-code: #f5f6f8;
+  --accent: #4f46e5;
+}
+* { box-sizing: border-box; }
+html, body {
+  font-family: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  color: var(--fg);
+  line-height: 1.55;
+  font-size: 11pt;
+  margin: 0;
+  padding: 0;
+}
+body { padding: 2.4rem 2.8rem; }
+h1 { font-size: 22pt; margin: 0 0 0.6rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; }
+h2 { font-size: 15pt; margin: 1.6rem 0 0.5rem; color: var(--accent); }
+h3 { font-size: 12.5pt; margin: 1.1rem 0 0.4rem; }
+p  { margin: 0.5rem 0; }
+hr { border: none; border-top: 1px dashed var(--border); margin: 1.4rem 0; }
+ul, ol { margin: 0.4rem 0 0.6rem 1.4rem; padding: 0; }
+li { margin: 0.18rem 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.32rem;
+  font-size: 9.5pt;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  overflow-x: auto;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 9pt;
+  white-space: pre;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6rem 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+thead th {
+  background: #eef0f5;
+  text-align: left;
+  font-weight: 600;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  vertical-align: top;
+}
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+/* Print tuning */
+@page {
+  size: A4;
+  margin: 14mm 14mm 18mm 14mm;
+}
+@media print {
+  body { padding: 0; }
+  h2, h3 { page-break-after: avoid; }
+  pre, table { page-break-inside: avoid; }
+}
+
+.footer {
+  margin-top: 2.4rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
+  font-size: 8.5pt;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<h1>Minimal Checkout with Fungies &mdash; Step-by-Step</h1>
+<p>A practical guide to wiring up the smallest possible working checkout where:</p>
+<ul>
+<li>Customer details (email, country) are <strong>pre-filled</strong>.</li>
+<li>You pass <code>workspace_id</code> and <code>user_id</code> as <strong>custom fields</strong>.</li>
+<li>Those custom fields come back to you in the <strong>webhook</strong>.</li>
+<li>The checkout <strong>closes / redirects on success</strong>.</li>
+</ul>
+<p>This is the integration recipe the official Fungies docs describe, cross-checked against the real behaviour of the platform. The 3 most common reasons your first attempt won't work are all spelled out in the <a href="#10-troubleshooting--exact-symptoms-from-your-question">Troubleshooting</a> section at the end.</p>
+<hr>
+<h2>1. Decide which checkout flavor to use</h2>
+<p>Fungies gives you 3 ways to render the same hosted checkout. Pick <strong>one</strong> and stick with it.</p>
+<table><thead><tr>
+<th>Mode</th>
+<th>What the user sees</th>
+<th>Best for</th>
+<th>Effort</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Hosted</strong></td>
+<td>Browser navigates to a Fungies-hosted page</td>
+<td>Email links, simple buttons, marketing campaigns</td>
+<td>Trivial &mdash; just a URL</td>
+</tr>
+<tr>
+<td><strong>Overlay</strong></td>
+<td>A full-screen modal pops over your site</td>
+<td>SaaS dashboards, "buy" buttons, keeping the user on your domain</td>
+<td>Add 1 SDK script + 1 button</td>
+</tr>
+<tr>
+<td><strong>Embed</strong></td>
+<td>An iframe is rendered inside an element you control</td>
+<td>Dedicated <code>/checkout</code> pages</td>
+<td>Add 1 SDK script + 1 container div</td>
+</tr>
+</tbody></table>
+<p>For a "show a popup with the customer's email pre-filled, close on success" UX, <strong>use Overlay</strong>. The rest of this guide focuses on Overlay, then shows the 2-line variants for Hosted and Embed.</p>
+<hr>
+<h2>2. Prerequisites &mdash; what to set up in the Dashboard FIRST</h2>
+<p>90% of "it doesn't work" issues come from skipping this section. Do these in order.</p>
+<h3>2.1 Create the product and an offer</h3>
+<p>Dashboard &rarr; Products &rarr; Game Assets &rarr; Add product. Create a <code>OneTimePayment</code> or <code>Subscription</code> product, then create at least one <strong>offer</strong> under it (price + currency). Note the offer ID &mdash; that's what goes in the checkout URL.</p>
+<p>(If you're building programmatically, use <code>POST /v0/products/create</code> + <code>POST /v0/offers/create</code>. See <code>creating-products-and-offers.pdf</code> in this folder.)</p>
+<h3>2.2 Define your custom fields at PROJECT level</h3>
+<p>This is the single most common gotcha. <strong>You cannot just append <code>?workspace_id=foo</code> to the URL and expect it in the webhook.</strong> Fungies only echoes back fields that are declared at project level.</p>
+<p>Dashboard &rarr; Products &rarr; Game Assets &rarr; click your <strong>project</strong> &rarr; scroll to <strong>Custom Fields</strong> &rarr; <strong>Add field</strong>, twice:</p>
+<table><thead><tr>
+<th>Label</th>
+<th>Field key (what your code sends)</th>
+<th>Type</th>
+<th>Required</th>
+<th>Regex (optional)</th>
+</tr></thead><tbody>
+<tr>
+<td>Workspace ID</td>
+<td><code>workspace_id</code></td>
+<td>Text</td>
+<td>Yes (default)</td>
+<td><code>^[A-Za-z0-9_-]{1,64}$</code></td>
+</tr>
+<tr>
+<td>User ID</td>
+<td><code>user_id</code></td>
+<td>Text</td>
+<td>Yes (default)</td>
+<td><code>^[A-Za-z0-9_-]{1,64}$</code></td>
+</tr>
+</tbody></table>
+<p>Save the project. From this moment on, <strong>all custom fields are required by default</strong> &mdash; checkout will refuse to load unless every defined field is supplied. So pass them all from the very first integration test.</p>
+<h3>2.3 Configure your webhook endpoint</h3>
+<p>Dashboard &rarr; Developers &rarr; Webhooks &rarr; Add endpoint.</p>
+<ul>
+<li>URL: <code>https://your-app.example.com/api/fungies/webhook</code></li>
+<li>Events to subscribe (minimum): <code>order.paid</code>, <code>payment_success</code>, <code>payment_failed</code>, <code>payment_refunded</code>, <code>subscription_created</code>, <code>subscription_interval</code>, <code>subscription_cancelled</code>.</li>
+<li>Copy the <strong>signing secret</strong> &mdash; you'll verify the <code>x-fngs-signature</code> HMAC-SHA256 header against it on every incoming request.</li>
+</ul>
+<h3>2.4 Configure the post-purchase Instant Redirect URL</h3>
+<p>Dashboard &rarr; Settings &rarr; Store &rarr; <strong>Checkout</strong> tab.</p>
+<ul>
+<li>Set <strong>Instant Redirect URL</strong> to wherever you want the customer to land after success, e.g. <code>https://your-app.example.com/welcome</code>.</li>
+<li>Add the system parameters <code>fngs-order-id</code> and <code>fngs-user-email</code>. Fungies will append them to the redirect, so your page can use them to recover state.</li>
+</ul>
+<p>This is what makes the overlay close itself and the customer return to your app on success. <strong>Without this set, the overlay sits there showing the success screen and never closes.</strong></p>
+<h3>2.5 Publish the store</h3>
+<p>Dashboard &rarr; Store &rarr; Publish. The <code>/checkout/&lt;offer_id&gt;</code> URLs only resolve once the store is in the published state.</p>
+<hr>
+<h2>3. The exact URL / parameter shape (this is where most bugs live)</h2>
+<table><thead><tr>
+<th>Concept</th>
+<th>Hosted query param</th>
+<th>Overlay/Embed (SDK option)</th>
+<th>Overlay/Embed (HTML attribute)</th>
+</tr></thead><tbody>
+<tr>
+<td>Email prefill</td>
+<td><code>fngs-customer-email</code></td>
+<td><code>billingData.email</code></td>
+<td><code>data-fungies-billing-email</code></td>
+</tr>
+<tr>
+<td>First name</td>
+<td><code>fngs-customer-first-name</code></td>
+<td><code>billingData.firstName</code></td>
+<td><code>data-fungies-billing-first-name</code></td>
+</tr>
+<tr>
+<td>Last name</td>
+<td><code>fngs-customer-last-name</code></td>
+<td><code>billingData.lastName</code></td>
+<td><code>data-fungies-billing-last-name</code></td>
+</tr>
+<tr>
+<td>Country (ISO-2)</td>
+<td><code>fngs-customer-country</code></td>
+<td><code>billingData.country</code></td>
+<td><code>data-fungies-billing-country</code></td>
+</tr>
+<tr>
+<td>State</td>
+<td><code>fngs-customer-state</code></td>
+<td><code>billingData.state</code></td>
+<td><code>data-fungies-billing-state</code></td>
+</tr>
+<tr>
+<td>City</td>
+<td><code>fngs-customer-city</code></td>
+<td><code>billingData.city</code></td>
+<td><code>data-fungies-billing-city</code></td>
+</tr>
+<tr>
+<td>ZIP</td>
+<td><code>fngs-customer-zip-code</code></td>
+<td><code>billingData.zipCode</code></td>
+<td><code>data-fungies-billing-zip-code</code></td>
+</tr>
+<tr>
+<td>Quantity</td>
+<td><code>fngs-quantity</code></td>
+<td><code>quantity</code></td>
+<td><code>data-fungies-quantity</code></td>
+</tr>
+<tr>
+<td>Discount code</td>
+<td><code>fngs-discount-code</code></td>
+<td><code>discountCode</code></td>
+<td><code>data-fungies-discount-code</code></td>
+</tr>
+<tr>
+<td>Custom field <code>user_id</code></td>
+<td><code>user_id</code> (bare key)</td>
+<td><code>customFields.user_id</code></td>
+<td>inside <code>data-fungies-custom-fields</code> JSON</td>
+</tr>
+</tbody></table>
+<p><strong>The key point:</strong> billing-data params have a <code>fngs-customer-<em></code> / <code>billingData.</em></code> / <code>data-fungies-billing-*</code> prefix. Custom fields are passed by their <strong>bare key name</strong> &mdash; no prefix at all. Mixing these up is the #1 reason your prefill doesn't work.</p>
+<p>&gt; The legacy <code>customerEmail</code> SDK property and <code>data-fungies-customer-email</code> attribute are still accepted but deprecated. Don't use them in new code.</p>
+<p>&gt; Note: <code>fngs-user-email</code> (with <strong>user</strong>, not <strong>customer</strong>) is <strong>not</strong> a prefill parameter. It is the system param that Fungies <em>appends</em> to your Instant Redirect URL after purchase. Don't pass it on the way in.</p>
+<hr>
+<h2>4. Overlay checkout &mdash; the minimal HTML</h2>
+<p>Copy this into a static <code>.html</code> file, replace the three placeholders, open it in a browser, click the button:</p>
+<pre><code class="lang-html">
+&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;title&gt;Buy Pro Plan&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;button
+    id="buy-button"
+    data-fungies-checkout-url="https://YOUR-STORE.app.fungies.io/checkout/YOUR-OFFER-ID"
+    data-fungies-mode="overlay"
+    data-fungies-billing-email="alice@example.com"
+    data-fungies-billing-country="US"
+    data-fungies-custom-fields='{"workspace_id":"ws_42","user_id":"usr_abc123"}'&gt;
+    Buy Pro Plan
+  &lt;/button&gt;
+
+  &lt;script
+    src="https://cdn.jsdelivr.net/npm/@fungies/fungies-js@latest"
+    defer
+    data-auto-init&gt;
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>That's the whole integration. What this does:</p>
+<ol>
+<li>The Fungies JS SDK loads from CDN and <code>data-auto-init</code> makes it scan the DOM for buttons.</li>
+<li>Click handler opens the checkout in a full-screen overlay.</li>
+<li>Email and country are pre-filled in the checkout form.</li>
+<li><code>workspace_id</code> and <code>user_id</code> are attached to the order and will appear in every webhook event for that order.</li>
+<li>On payment success Fungies redirects to your Instant Redirect URL (configured in step 2.4) and the overlay closes itself.</li>
+</ol>
+<hr>
+<h2>5. The same thing in plain JavaScript (no data attributes)</h2>
+<p>Useful when the values are dynamic (e.g. from your auth state in a SPA):</p>
+<pre><code class="lang-html">
+&lt;button id="buy-button"&gt;Buy Pro Plan&lt;/button&gt;
+
+&lt;script src="https://cdn.jsdelivr.net/npm/@fungies/fungies-js@latest"&gt;&lt;/script&gt;
+&lt;script&gt;
+  Fungies.Initialize();
+
+  document.getElementById("buy-button").addEventListener("click", () =&gt; {
+    Fungies.Checkout.open({
+      checkoutUrl: "https://YOUR-STORE.app.fungies.io/checkout/YOUR-OFFER-ID",
+      settings: { mode: "overlay" },
+      billingData: {
+        email:   currentUser.email,
+        country: currentUser.countryCode  // "US", "PL", "DE", ...
+      },
+      customFields: {
+        workspace_id: currentUser.workspaceId,
+        user_id:      currentUser.id
+      }
+    });
+  });
+&lt;/script&gt;
+</code></pre>
+<p>To close the overlay programmatically (e.g. on a custom cancel button somewhere):</p>
+<pre><code class="lang-javascript">
+Fungies.Checkout.close();
+</code></pre>
+<hr>
+<h2>6. Hosted checkout (no JS) &mdash; just a URL</h2>
+<p>If you don't want to load the SDK at all (e.g. you're sending a magic link in an email), use the bare URL:</p>
+<pre><code>
+https://YOUR-STORE.app.fungies.io/checkout/YOUR-OFFER-ID
+  ?fngs-customer-email=alice%40example.com
+  &amp;fngs-customer-country=US
+  &amp;workspace_id=ws_42
+  &amp;user_id=usr_abc123
+</code></pre>
+<p>URL-encode the values (<code>@</code> &rarr; <code>%2540</code>... actually <code>%40</code>; <code>space</code> &rarr; <code>%20</code>). The custom-field keys go in <strong>bare</strong>, the billing prefill keys use the <code>fngs-customer-*</code> prefix.</p>
+<p>On success Fungies redirects the customer to your Instant Redirect URL.</p>
+<hr>
+<h2>7. Embedded checkout (iframe inside your page)</h2>
+<p>Same SDK, different <code>mode</code>:</p>
+<pre><code class="lang-html">
+&lt;div id="checkout-container" style="min-height: 700px;"&gt;&lt;/div&gt;
+
+&lt;script src="https://cdn.jsdelivr.net/npm/@fungies/fungies-js@latest"&gt;&lt;/script&gt;
+&lt;script&gt;
+  Fungies.Initialize();
+
+  Fungies.Checkout.open({
+    checkoutUrl: "https://YOUR-STORE.app.fungies.io/checkout/YOUR-OFFER-ID",
+    settings: {
+      mode: "embed",
+      frameTarget: "checkout-container"
+    },
+    billingData: { email: "alice@example.com", country: "US" },
+    customFields: { workspace_id: "ws_42", user_id: "usr_abc123" }
+  });
+&lt;/script&gt;
+</code></pre>
+<p>Embed mode is fire-and-forget &mdash; the iframe stays mounted until purchase or until you navigate away. On success the iframe redirects internally to your Instant Redirect URL inside its own frame, so it's usually cleaner to break out via <code>window.top.location.href = '/welcome'</code> from your own server's redirect page, or just use overlay mode instead.</p>
+<hr>
+<h2>8. What the webhook looks like with custom fields</h2>
+<p>Once payment succeeds, Fungies POSTs to your endpoint. The <code>customFields</code> you defined and passed come back under <code>data.customFields</code> (and per-line-item under <code>data.items[].customFields</code>):</p>
+<pre><code class="lang-json">
+{
+  "object": "event",
+  "id": "evt_6f97c060",
+  "type": "order.paid",
+  "createdAt": 1716557400000,
+  "data": {
+    "object": "order",
+    "id": "ord_xyz789",
+    "customFields": {
+      "workspace_id": "ws_42",
+      "user_id":      "usr_abc123"
+    },
+    "items": [
+      {
+        "id": "a0bf335d",
+        "name": "Pro Plan",
+        "quantity": "1",
+        "customFields": {
+          "workspace_id": "ws_42",
+          "user_id":      "usr_abc123"
+        }
+      }
+    ]
+  }
+}
+</code></pre>
+<p>Your handler should:</p>
+<ol>
+<li>Verify the HMAC-SHA256 <code>x-fngs-signature</code> header against your webhook secret (with a timing-safe comparison).</li>
+<li>Look up the user using <code>data.customFields.user_id</code> and <code>data.customFields.workspace_id</code>.</li>
+<li>Be <strong>idempotent</strong> &mdash; key on <code>event.id</code> and ignore retries (Fungies guarantees at-least-once delivery with up to 5 retries).</li>
+<li>Return a <code>2xx</code> within 30 seconds.</li>
+</ol>
+<hr>
+<h2>9. Complete copy-paste example (production-ready skeleton)</h2>
+<p>This is a single file that demonstrates everything: prefill, custom fields, and the post-purchase redirect handoff to your own page.</p>
+<pre><code class="lang-html">
+&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;title&gt;Subscribe&lt;/title&gt;
+  &lt;style&gt;
+    .pay-btn {
+      background: #6035EC; color: white; border: 0;
+      padding: 12px 24px; border-radius: 8px;
+      font-size: 16px; cursor: pointer;
+    }
+    .pay-btn:hover { background: #4c2abd; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Pro Plan &amp;mdash; $19/month&lt;/h1&gt;
+  &lt;button id="buy" class="pay-btn"&gt;Subscribe&lt;/button&gt;
+
+  &lt;script src="https://cdn.jsdelivr.net/npm/@fungies/fungies-js@latest"&gt;&lt;/script&gt;
+  &lt;script&gt;
+    // 1. Whatever your auth gives you:
+    const currentUser = {
+      id:          "usr_abc123",
+      email:       "alice@example.com",
+      countryCode: "US",
+      workspaceId: "ws_42"
+    };
+
+    Fungies.Initialize();
+
+    document.getElementById("buy").addEventListener("click", () =&gt; {
+      Fungies.Checkout.open({
+        checkoutUrl: "https://YOUR-STORE.app.fungies.io/checkout/YOUR-OFFER-ID",
+        settings: { mode: "overlay" },
+        billingData: {
+          email:   currentUser.email,
+          country: currentUser.countryCode
+        },
+        customFields: {
+          workspace_id: currentUser.workspaceId,
+          user_id:      currentUser.id
+        }
+      });
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>And the matching minimal webhook handler (Node/Express sketch):</p>
+<pre><code class="lang-javascript">
+import express from "express";
+import crypto from "node:crypto";
+
+const app = express();
+app.use(express.json({
+  verify: (req, _res, buf) =&gt; { req.rawBody = buf; }
+}));
+
+const SECRET = process.env.FUNGIES_WEBHOOK_SECRET;
+const seen = new Set(); // replace with Redis / DB in production
+
+app.post("/api/fungies/webhook", (req, res) =&gt; {
+  const sig = req.header("x-fngs-signature") || "";
+  const expected = "sha256_" + crypto
+    .createHmac("sha256", SECRET)
+    .update(req.rawBody)
+    .digest("hex");
+
+  if (sig.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+    return res.status(401).end();
+  }
+
+  const evt = req.body;
+  if (seen.has(evt.id)) return res.status(200).end(); // idempotency
+  seen.add(evt.id);
+
+  if (evt.type === "order.paid" || evt.type === "payment_success") {
+    const { workspace_id, user_id } = evt.data.customFields || {};
+    // grant access in your DB...
+    console.log("paid", { workspace_id, user_id, order: evt.data.id });
+  }
+
+  res.status(200).end();
+});
+
+app.listen(3000);
+</code></pre>
+<hr>
+<h2>10. Troubleshooting &mdash; exact symptoms from your question</h2>
+<h3>"Email isn't pre-filling"</h3>
+<p>Almost certainly the parameter name is wrong. Audit your request against the table in <a href="#3-the-exact-url--parameter-shape-this-is-where-most-bugs-live">section 3</a>. Most common mistakes:</p>
+<table><thead><tr>
+<th>You wrote</th>
+<th>Should be</th>
+</tr></thead><tbody>
+<tr>
+<td><code>?fngs-user-email=...</code></td>
+<td><code>?fngs-customer-email=...</code></td>
+</tr>
+<tr>
+<td><code>?email=...</code> (bare)</td>
+<td><code>?fngs-customer-email=...</code></td>
+</tr>
+<tr>
+<td><code>data-fungies-email="..."</code></td>
+<td><code>data-fungies-billing-email="..."</code></td>
+</tr>
+<tr>
+<td><code>customerEmail: "..."</code> (SDK)</td>
+<td><code>billingData: { email: "..." }</code></td>
+</tr>
+</tbody></table>
+<p>Secondary cause: billing fields are only <strong>shown</strong> in checkout when "Collect billing information" is enabled in the dashboard checkout settings (or your Stripe account is India-based, where billing is regulatory-required). If they're not shown, the prefill still attaches to the order but isn't visible &mdash; check the order in the dashboard, not the visible form.</p>
+<h3>"Custom fields are missing from my webhook payload"</h3>
+<p>Three possible causes, in order of frequency:</p>
+<ol>
+<li><strong>You didn't define them in the Dashboard.</strong> Custom fields only flow through to the webhook if they exist as project-level fields. See <a href="#22-define-your-custom-fields-at-project-level">section 2.2</a>.</li>
+<li><strong>You're passing them with a <code>fngs-</code> prefix.</strong> Custom fields use <strong>bare keys</strong> (<code>?user_id=...</code>), not <code>?fngs-user_id=...</code>.</li>
+<li><strong>Validation is failing silently.</strong> If you set a regex on the custom field and the value you pass doesn't match, checkout refuses to load &mdash; the customer never sees the form. Inspect the browser console for <code>400</code>s when the checkout opens.</li>
+</ol>
+<h3>"The overlay/popup doesn't close on successful subscription"</h3>
+<p>You're missing the <strong>Instant Redirect URL</strong> in Dashboard &rarr; Settings &rarr; Store &rarr; Checkout tab. Without it the success screen sits inside the overlay forever. With it set, Fungies navigates the overlay frame to your redirect URL on success, which effectively closes the popup and drops the customer on your page.</p>
+<p>If you want to also handle "user closed the modal without paying" in your own UI, listen for <code>Fungies.Checkout.close()</code> being called &mdash; or just leave it; the overlay backdrop has its own close affordance.</p>
+<h3>"Hosted, overlay, and embedded all behave differently for me"</h3>
+<p>They share the same checkout backend, so the difference is purely the <strong>wrapper</strong>. Make sure:</p>
+<ul>
+<li>Hosted &rarr; Use the bare offer URL with <code>?fngs-customer-*</code> query params + bare custom-field keys.</li>
+<li>Overlay &rarr; Use the SDK with <code>mode: "overlay"</code> and the <code>billingData</code> / <code>customFields</code> objects.</li>
+<li>Embed &rarr; Same as overlay but <code>mode: "embed"</code> and a <code>frameTarget</code> element.</li>
+</ul>
+<p>Don't mix paradigms (e.g. don't pass <code>data-fungies-billing-email</code> AND <code>?fngs-customer-email=</code> &mdash; pick the one for your mode).</p>
+<h3>"Price isn't pre-filled"</h3>
+<p>Price is <strong>always</strong> controlled by the <strong>offer</strong>, not by URL parameters. Whatever you set on the offer in the Dashboard (or via <code>POST /v0/offers/create</code>) is what the customer sees. If you want a different price for the same product, create a second offer with that price and link to it. There's no way to override price client-side, by design (otherwise customers could rewrite it in DevTools).</p>
+<p>To pass quantity, use <code>?fngs-quantity=3</code> (hosted) or <code>quantity: 3</code> (SDK).</p>
+<hr>
+<h2>11. Checklist before going live</h2>
+<ul>
+<li>[ ] Custom fields <code>workspace_id</code> and <code>user_id</code> exist as project-level fields in the Dashboard.</li>
+<li>[ ] Webhook endpoint registered and signing-secret stored in your server's env.</li>
+<li>[ ] Webhook handler verifies <code>x-fngs-signature</code> (HMAC-SHA256, timing-safe).</li>
+<li>[ ] Webhook handler is idempotent on <code>event.id</code>.</li>
+<li>[ ] Instant Redirect URL configured in Dashboard &rarr; Settings &rarr; Store &rarr; Checkout.</li>
+<li>[ ] Store is published.</li>
+<li>[ ] You're using <strong>production keys + production store URL</strong> (no <code>stage.fungies.net</code> left in code).</li>
+<li>[ ] One end-to-end test purchase performed with a Stripe test card on staging first.</li>
+</ul>
+<hr>
+<h2>12. References</h2>
+<ul>
+<li>Checkout Elements overview: https://docs.fungies.io/developers/checkout-elements/overview</li>
+<li>Billing Data Prefill: https://docs.fungies.io/developers/checkout-elements/billing-data</li>
+<li>JavaScript SDK: https://docs.fungies.io/developers/checkout-elements/sdk</li>
+<li>HTML Data Attributes: https://docs.fungies.io/developers/checkout-elements/html-attributes</li>
+<li>Custom Fields Overview: https://docs.fungies.io/developers/customer-data/overview</li>
+<li>Set Up Custom Fields: https://docs.fungies.io/developers/customer-data/setup</li>
+<li>Validate Customer Data: https://docs.fungies.io/developers/customer-data/validate</li>
+<li>Webhooks Overview: https://docs.fungies.io/developers/webhooks/overview</li>
+<li>Set Up Webhooks: https://docs.fungies.io/developers/webhooks/setup</li>
+</ul>
+
+<div class="footer">
+  Fungies for WooCommerce &middot; Developer guide &middot; Generated 2026-05-24 &middot; Source: docs/minimal-checkout-step-by-step.md
+</div>
+</body>
+</html>
