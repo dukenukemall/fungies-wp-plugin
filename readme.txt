@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 6.0
 WC tested up to: 9.0
-Stable tag: 2.4.3
+Stable tag: 2.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,11 +135,11 @@ Each unit (quantity) becomes one entry in the resulting offer-IDs array. Items w
 
 **Single offer** (1 distinct offer ID, quantity 1) — no API call is needed. The plugin redirects directly to:
 
-`<store_url>/checkout/<offer_id>?fngs-user-email=...&fngs-customer-country=...`
+`<store_url>/checkout/<offer_id>?fngs-customer-email=...&fngs-customer-country=...`
 
 **Multiple offers** (2 or more, or quantity > 1) — the plugin calls `POST /v0/elements/checkout/create` with all collected offer IDs, then redirects to:
 
-`<store_url>/checkout-element/<element_id>?fngs-user-email=...&fngs-customer-country=...`
+`<store_url>/checkout-element/<element_id>?fngs-customer-email=...&fngs-customer-country=...`
 
 The element ID is also stored on the WooCommerce order as `_fungies_checkout_element_id` for traceability. When the customer lands on the hosted checkout, Fungies promotes the element into a checkout session and the URL becomes `…/checkout-element/<element_id>/checkout/<session_id>` — every cart product is visible in the order summary.
 
@@ -219,6 +219,10 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 
 == Changelog ==
 
+= 2.4.4 =
+* Fix: Customer email was not pre-filled on the Fungies hosted checkout page when redirecting from WooCommerce. Root cause: `Fungies_Checkout_URL_Builder::build()` was sending `fngs-user-email` as the prefill query parameter, but per the official Fungies docs the prefill parameter is `fngs-customer-email`. `fngs-user-email` is the *outbound* system parameter Fungies appends to the post-purchase Instant Redirect URL — not the inbound prefill param. Mixing the two meant the WC billing email was passed but ignored by Fungies, so customers had to retype their email at checkout. The plugin now sends `fngs-customer-email` for prefill while still reading `fngs-user-email` from the return URL (where Fungies appends it) — both names are now used in their correct directions. No data migration needed; existing orders are unaffected.
+* Docs: Corrected the URL examples in the readme to match.
+
 = 2.4.3 =
 * Lint: Replaced the three `phpcs:ignore` annotations added in 2.4.2 with proper `phpcs:disable` / `phpcs:enable` blocks. The slow-query sniff fires on the `'meta_key'` / `'meta_value'` / `'meta_query'` array-key string tokens *inside* the `wc_get_orders()` / `get_posts()` literal, not on the outer call line, so the single-line `ignore` form never reached them. Affects `Fungies_Order_Sync::find_order_by_meta()`, `Fungies_Return_Resolver::by_meta()`, and `Fungies_Product_Sync::push_to_fungies()`.
 * No runtime behaviour changes.
@@ -272,6 +276,9 @@ Yes. The plugin is fully compatible with both the classic WooCommerce checkout a
 For changelog entries from earlier releases (2.1.x, 2.0.x, 1.x), see `changelog.txt` in the plugin root.
 
 == Upgrade Notice ==
+
+= 2.4.4 =
+Fixes the customer email prefill on the Fungies hosted checkout page (was sending the wrong query parameter name). Recommended update.
 
 = 2.4.3 =
 Plugin Check follow-up: fixes the scope of three slow-query phpcs:ignore annotations from 2.4.2 (single-line ignores didn't reach the array-key tokens). No runtime changes.

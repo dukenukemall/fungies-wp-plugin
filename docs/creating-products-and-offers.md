@@ -96,7 +96,7 @@ https://<your-store-slug>.app.fungies.io/checkout/<offer_id>
 Append custom fields and customer hints as query params to prefill the checkout and have them echoed back in the webhook:
 
 ```
-?fngs-user-email=alice@example.com
+?fngs-customer-email=alice@example.com
 &fngs-customer-country=US
 &user_id=u_12345         (custom field, surfaces in webhook payload)
 &fngs-discount-code=SAVE10

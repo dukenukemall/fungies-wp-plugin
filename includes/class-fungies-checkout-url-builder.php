@@ -8,8 +8,15 @@ class Fungies_Checkout_URL_Builder {
 		if ( ! $checkout_url ) {
 			return $order->get_checkout_order_received_url();
 		}
+		// Fungies prefill parameter names per docs.fungies.io/developers/
+		// checkout-elements/billing-data: `fngs-customer-email` (NOT
+		// `fngs-user-email`). `fngs-user-email` is the *outbound* system
+		// param Fungies appends to the Instant Redirect URL after purchase
+		// — not the inbound prefill param. Sending the wrong key meant the
+		// customer's email field was empty on the Fungies hosted checkout
+		// page even though we knew the email from the WC order.
 		$args = array(
-			'fngs-user-email'       => $order->get_billing_email(),
+			'fngs-customer-email'   => $order->get_billing_email(),
 			'fngs-customer-country' => $order->get_billing_country() ? $order->get_billing_country() : '',
 		);
 		$discount_code = self::resolve_discount_code( $order );
