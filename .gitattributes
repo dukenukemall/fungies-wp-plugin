@@ -4,6 +4,7 @@
 .cursor/ export-ignore
 assets/c__* export-ignore
 assets/screenshots/ export-ignore
+assets/branding/ export-ignore
 agent-transcripts/ export-ignore
 README.md export-ignore
 build.ps1 export-ignore
