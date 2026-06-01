@@ -3,10 +3,15 @@
 .env export-ignore
 .cursor/ export-ignore
 assets/c__* export-ignore
+assets/screenshots/ export-ignore
 agent-transcripts/ export-ignore
 README.md export-ignore
 build.ps1 export-ignore
+svn-bootstrap.ps1 export-ignore
+svn-release.ps1 export-ignore
+svn-assets.ps1 export-ignore
 fungies-*.zip export-ignore
 docs/ export-ignore
+.kb/ export-ignore
 .commit-msg.tmp export-ignore
 .release-notes.tmp export-ignore

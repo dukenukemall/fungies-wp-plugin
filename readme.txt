@@ -217,6 +217,16 @@ When a payment succeeds, the plugin stores the Fungies order ID, order number, p
 
 Yes. The plugin is fully compatible with both the classic WooCommerce checkout and the new block-based cart and checkout experience.
 
+== Screenshots ==
+
+1. Fungies appearing as a payment option in the WooCommerce Payments settings.
+2. Customer-facing Fungies checkout step launched from WooCommerce.
+3. Fungies checkout completing the purchase with Merchant-of-Record handling.
+4. Fungies for WooCommerce settings tab inside WooCommerce admin.
+5. Fungies dashboard showing products and orders synced from WooCommerce.
+6. Synced products list inside the Fungies dashboard.
+7. WooCommerce order detail view linked to its Fungies order and payment.
+
 == Changelog ==
 
 = 2.4.4 =
